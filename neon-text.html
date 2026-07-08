@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhotoEffect Neon</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Monoton&family=Righteous&family=Pacifico&family=Bungee&family=Permanent+Marker&display=swap');
+
+  :root{
+    --void:#141311;
+    --panel:#1c1b18;
+    --paper:#eee7d8;
+    --ink:#eee7d8;
+    --muted:#8a8375;
+    --line:#332f28;
+    --safelight:#e0483e;
+    --safelight-dim:#7a2b26;
+  }
+  .neon-app-wrapper, .neon-app-wrapper *{box-sizing:border-box;}
+  .neon-app-wrapper{
+    margin:0;
+    background:var(--void);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:1080px;
+    margin:0 auto;
+    padding:18px 14px 32px;
+  }
+  .head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    border-bottom:2px solid var(--line);
+    padding-bottom:10px;
+    margin-bottom:16px;
+  }
+  .head h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:2px;
+    font-size:clamp(22px,4vw,32px);
+    margin:0;
+  }
+  .head h1 span{color:var(--safelight);}
+  .frame-counter{
+    font-size:12px;
+    letter-spacing:1px;
+    color:var(--muted);
+    text-align:right;
+  }
+  .frame-counter b{
+    display:block;
+    color:var(--safelight);
+    font-size:16px;
+    font-family:'Oswald',sans-serif;
+  }
+
+  .sprocket{
+    display:flex;
+    gap:6px;
+    padding:6px 0 14px;
+    overflow:hidden;
+  }
+  .sprocket div{
+    width:10px;height:14px;
+    background:var(--line);
+    border-radius:2px;
+    flex-shrink:0;
+  }
+
+  .swatches{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .swatch{
+    width:26px;height:26px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    cursor:pointer;
+    padding:0;
+  }
+  .swatch.active{
+    border-color:var(--ink);
+    box-shadow:0 0 0 2px var(--void), 0 0 0 3px var(--safelight);
+  }
+
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    padding:12px 14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    margin-bottom:16px;
+  }
+  .ctrl{display:flex;flex-direction:column;gap:6px;min-width:140px;flex:1;}
+  .ctrl.wide{flex-basis:100%;}
+  .ctrl label{
+    font-size:10px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .ctrl input[type=range]{accent-color:var(--safelight);width:100%;}
+  .ctrl select, .ctrl input[type=color], .ctrl input[type=text]{
+    background:var(--void);
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:8px;
+    border-radius:4px;
+    font-family:inherit;
+    font-size:13px;
+    width:100%;
+  }
+  .ctrl input[type=color]{padding:2px;height:32px;cursor:pointer;}
+  .val-tag{
+    font-size:10px;
+    color:var(--safelight);
+    letter-spacing:1px;
+  }
+
+  .stage-wrap{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:10px;
+  }
+  #stage{
+    position:relative;
+    width:100%;
+    min-height:220px;
+    background:var(--void);
+    margin:0 auto;
+    overflow:hidden;
+    border-radius:2px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #finalCanvas{
+    max-width:100%;
+    display:block;
+    border-radius:2px;
+    touch-action:none;
+    cursor:grab;
+  }
+  #finalCanvas.dragging{cursor:grabbing;}
+  #finalCanvas.hidden{display:none;}
+  .empty-mark{
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:1.5px;
+    text-align:center;
+    text-transform:uppercase;
+    padding:60px 10px;
+  }
+
+  .actions{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+    flex-wrap:wrap;
+  }
+  button.primary, button.ghost{
+    font-family:'Oswald',sans-serif;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    font-weight:600;
+    font-size:13px;
+    padding:12px 22px;
+    border-radius:4px;
+    cursor:pointer;
+    border:1px solid var(--line);
+  }
+  button.primary{
+    background:var(--safelight);
+    color:#1a0f0d;
+    border-color:var(--safelight);
+  }
+  button.primary:disabled{
+    background:var(--safelight-dim);
+    border-color:var(--safelight-dim);
+    color:#3a2320;
+    cursor:not-allowed;
+  }
+  button.ghost{
+    background:transparent;
+    color:var(--ink);
+  }
+  .hint{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:10px;
+    line-height:1.6;
+  }
+  .neon-app-wrapper input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div class="neon-app-wrapper">
+<div class="app">
+
+  <div class="head">
+    <h1>PhotoEffect<span>.Neon</span></h1>
+    <div class="frame-counter">STATUS<b id="statusLabel">IDLE</b></div>
+  </div>
+
+  <div class="sprocket" id="sprocketTop"></div>
+
+  <div class="controls">
+    <div class="ctrl wide">
+      <label>Neon Text</label>
+      <input type="text" id="textInput" placeholder="Type your neon text..." maxlength="40" value="NEON">
+    </div>
+    <div class="ctrl">
+      <label>Background Photo</label>
+      <button class="ghost" id="importBtn">Import Photo</button>
+    </div>
+    <div class="ctrl">
+      <label>Font</label>
+      <select id="fontSelect">
+        <option value="Monoton">Monoton (Tube)</option>
+        <option value="Righteous">Righteous</option>
+        <option value="Bungee">Bungee</option>
+        <option value="Pacifico">Pacifico (Script)</option>
+        <option value="Permanent Marker">Permanent Marker</option>
+        <option value="Oswald">Oswald (Bold)</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Neon Color</label>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <div class="ctrl">
+      <label>Custom Color</label>
+      <input type="color" id="customColor" value="#00eaff">
+    </div>
+    <div class="ctrl">
+      <label>Text Size <span class="val-tag" id="textSizeVal">70</span>px</label>
+      <input type="range" id="textSize" min="18" max="200" value="70">
+    </div>
+    <div class="ctrl">
+      <label>Glow Intensity <span class="val-tag" id="glowIntVal">80</span></label>
+      <input type="range" id="glowIntensity" min="0" max="100" value="80">
+    </div>
+    <div class="ctrl">
+      <label>Glow Size <span class="val-tag" id="glowSizeVal">18</span></label>
+      <input type="range" id="glowSize" min="2" max="45" value="18">
+    </div>
+    <div class="ctrl">
+      <label>Background Brightness <span class="val-tag" id="bgBrightVal">60</span></label>
+      <input type="range" id="bgBright" min="0" max="100" value="60">
+    </div>
+  </div>
+
+  <div class="stage-wrap">
+    <div id="stage">
+      <canvas id="finalCanvas" class="hidden"></canvas>
+      <div class="empty-mark" id="emptyMark">Import a background photo to start</div>
+    </div>
+  </div>
+
+  <div class="sprocket" id="sprocketBottom"></div>
+
+  <div class="actions">
+    <button class="primary" id="downloadBtn" disabled>Download PNG</button>
+    <button class="ghost" id="resetBtn">Reset</button>
+  </div>
+
+  <input type="file" id="fileInput" accept="image/*">
+
+  <div class="hint">Import a background photo, type your neon text, pick a font &amp; color, then adjust text size, glow intensity/size, and background brightness. Drag the text directly on the canvas to reposition it.</div>
+
+</div>
+</div>
+
+<script>
+(function(){
+  const wrap        = document.currentScript.previousElementSibling;
+  const importBtn   = wrap.querySelector('#importBtn');
+  const fileInput   = wrap.querySelector('#fileInput');
+  const stage       = wrap.querySelector('#stage');
+  const finalCanvas = wrap.querySelector('#finalCanvas');
+  const emptyMark   = wrap.querySelector('#emptyMark');
+  const downloadBtn = wrap.querySelector('#downloadBtn');
+  const resetBtn    = wrap.querySelector('#resetBtn');
+  const statusLabel = wrap.querySelector('#statusLabel');
+  const swatchesEl  = wrap.querySelector('#swatches');
+  const customColor = wrap.querySelector('#customColor');
+  const textInput   = wrap.querySelector('#textInput');
+  const fontSelect  = wrap.querySelector('#fontSelect');
+
+  const textSize      = wrap.querySelector('#textSize');
+  const glowIntensity = wrap.querySelector('#glowIntensity');
+  const glowSize       = wrap.querySelector('#glowSize');
+  const bgBright       = wrap.querySelector('#bgBright');
+
+  const textSizeVal = wrap.querySelector('#textSizeVal');
+  const glowIntVal  = wrap.querySelector('#glowIntVal');
+  const glowSizeVal = wrap.querySelector('#glowSizeVal');
+  const bgBrightVal = wrap.querySelector('#bgBrightVal');
+
+  const ctx = finalCanvas.getContext('2d');
+
+  // ---------- decorative sprocket holes ----------
+  ['#sprocketTop','#sprocketBottom'].forEach(sel=>{
+    const el = wrap.querySelector(sel);
+    if(!el) return;
+    for(let i=0;i<40;i++){ const d=document.createElement('div'); el.appendChild(d); }
+  });
+
+  // ---------- neon color presets ----------
+  const PRESETS = [
+    {name:'Cyan',      hex:'#00eaff'},
+    {name:'Magenta',   hex:'#ff2bd6'},
+    {name:'Safelight', hex:'#e0483e'},
+    {name:'Lime',      hex:'#39ff14'},
+    {name:'Violet',    hex:'#b026ff'},
+    {name:'Amber',     hex:'#ffb300'},
+  ];
+  let neonColor = PRESETS[0].hex;
+
+  PRESETS.forEach(p=>{
+    const b = document.createElement('button');
+    b.className = 'swatch' + (p.hex===neonColor?' active':'');
+    b.style.background = p.hex;
+    b.title = p.name;
+    b.type = 'button';
+    b.addEventListener('click', ()=>{
+      neonColor = p.hex;
+      customColor.value = p.hex;
+      [...swatchesEl.children].forEach(c=>c.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    });
+    swatchesEl.appendChild(b);
+  });
+
+  customColor.addEventListener('input', ()=>{
+    neonColor = customColor.value;
+    [...swatchesEl.children].forEach(c=>c.classList.remove('active'));
+    render();
+  });
+
+  // ---------- state ----------
+  const MAX_DIM = 900;
+  let srcImg = null;
+  let W = 0, H = 0;
+  let hasImage = false;
+  let posX = 0.5, posY = 0.5; // fraction of canvas
+  let dragging = false;
+
+  function hexToRgb(hex){
+    const h = hex.replace('#','');
+    const n = parseInt(h.length===3 ? h.split('').map(c=>c+c).join('') : h, 16);
+    return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+  }
+  function lighten(hex, amt){
+    const {r,g,b} = hexToRgb(hex);
+    const L = c => Math.round(c + (255-c)*amt);
+    return `rgb(${L(r)},${L(g)},${L(b)})`;
+  }
+
+  function setStatus(t){ statusLabel.textContent = t; }
+
+  // ---------- image import ----------
+  importBtn.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      loadImage(img);
+    };
+    img.src = url;
+  });
+
+  function loadImage(img){
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const scale = Math.min(1, MAX_DIM / Math.max(w,h));
+    W = Math.round(w*scale);
+    H = Math.round(h*scale);
+    srcImg = img;
+
+    finalCanvas.width = W;
+    finalCanvas.height = H;
+    finalCanvas.classList.remove('hidden');
+    emptyMark.style.display = 'none';
+    downloadBtn.disabled = false;
+
+    posX = 0.5; posY = 0.5;
+    hasImage = true;
+    setStatus('READY');
+    render();
+  }
+
+  // ---------- drag to reposition text ----------
+  function getPos(e){
+    const rect = finalCanvas.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x: (cx / rect.width) * W, y: (cy / rect.height) * H };
+  }
+
+  function textBoxAt(px, py){
+    const size = parseInt(textSize.value,10);
+    const font = `700 ${size}px "${fontSelect.value}", sans-serif`;
+    ctx.font = font;
+    const txt = textInput.value || '';
+    const tw = ctx.measureText(txt).width;
+    const th = size * 1.15;
+    return { x: px - tw/2, y: py - th/2, w: tw, h: th };
+  }
+
+  finalCanvas.addEventListener('pointerdown', (e)=>{
+    if(!hasImage) return;
+    const p = getPos(e);
+    const box = textBoxAt(posX*W, posY*H);
+    if(p.x >= box.x-10 && p.x <= box.x+box.w+10 && p.y >= box.y-10 && p.y <= box.y+box.h+10){
+      dragging = true;
+      finalCanvas.classList.add('dragging');
+    }
+  });
+  window.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    const p = getPos(e);
+    posX = Math.min(1, Math.max(0, p.x / W));
+    posY = Math.min(1, Math.max(0, p.y / H));
+    render();
+  });
+  window.addEventListener('pointerup', ()=>{
+    dragging = false;
+    finalCanvas.classList.remove('dragging');
+  });
+
+  // ---------- render pipeline ----------
+  let renderTimer = null;
+  function render(){
+    if(!hasImage) return;
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(doRender, 15);
+  }
+
+  function doRender(){
+    setStatus('RENDERING');
+
+    const size    = parseInt(textSize.value,10);
+    const intens  = parseInt(glowIntensity.value,10) / 100;
+    const gsize   = parseInt(glowSize.value,10);
+    const bright  = parseInt(bgBright.value,10) / 100; // 0..1
+    const txt     = textInput.value || '';
+    const font    = `700 ${size}px "${fontSelect.value}", sans-serif`;
+
+    ctx.clearRect(0,0,W,H);
+
+    // 1) background photo with brightness control
+    ctx.filter = `brightness(${(0.15 + bright*0.85).toFixed(2)})`;
+    ctx.drawImage(srcImg, 0, 0, W, H);
+    ctx.filter = 'none';
+
+    if(!txt){ setStatus('READY'); return; }
+
+    const px = posX * W, py = posY * H;
+    const core = lighten(neonColor, 0.65);
+
+    // 2) glow bloom passes (wide soft -> tight bright), additive blend
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = font;
+    ctx.globalCompositeOperation = 'lighter';
+
+    const passes = [
+      { blur: gsize*2.4, alpha: 0.45*intens, color: neonColor },
+      { blur: gsize*1.4, alpha: 0.65*intens, color: neonColor },
+      { blur: gsize*0.6, alpha: 0.85*intens, color: neonColor },
+      { blur: gsize*0.15,alpha: 1.0*intens,  color: neonColor },
+    ];
+    passes.forEach(pass=>{
+      ctx.globalAlpha = Math.max(0, Math.min(1, pass.alpha));
+      ctx.filter = pass.blur > 0.2 ? `blur(${pass.blur}px)` : 'none';
+      ctx.fillStyle = pass.color;
+      ctx.fillText(txt, px, py);
+    });
+
+    // 3) bright core (hot center of the tube)
+    ctx.filter = 'none';
+    ctx.globalAlpha = Math.min(1, 0.85 + intens*0.15);
+    ctx.fillStyle = core;
+    ctx.fillText(txt, px, py);
+
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+
+    setStatus('READY');
+  }
+
+  // ---------- controls ----------
+  function bindRange(el, tag){
+    el.addEventListener('input', ()=>{
+      if(tag) tag.textContent = el.value;
+      render();
+    });
+  }
+  bindRange(textSize, textSizeVal);
+  bindRange(glowIntensity, glowIntVal);
+  bindRange(glowSize, glowSizeVal);
+  bindRange(bgBright, bgBrightVal);
+
+  textInput.addEventListener('input', render);
+  fontSelect.addEventListener('change', render);
+
+  downloadBtn.addEventListener('click', ()=>{
+    if(!hasImage) return;
+    const link = document.createElement('a');
+    link.download = 'photoeffect-neon.png';
+    link.href = finalCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    hasImage = false;
+    srcImg = null;
+    finalCanvas.classList.add('hidden');
+    emptyMark.style.display = 'block';
+    downloadBtn.disabled = true;
+    fileInput.value = '';
+    textInput.value = 'NEON';
+    setStatus('IDLE');
+  });
+
+})();
+</script>
+</body>
+</html>
