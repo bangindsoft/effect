@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhotoEffect Neon</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --void:#141311;
+    --panel:#1c1b18;
+    --paper:#eee7d8;
+    --ink:#eee7d8;
+    --muted:#8a8375;
+    --line:#332f28;
+    --safelight:#e0483e;
+    --safelight-dim:#7a2b26;
+  }
+  .neon-app-wrapper, .neon-app-wrapper *{box-sizing:border-box;}
+  .neon-app-wrapper{
+    margin:0;
+    background:var(--void);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:1080px;
+    margin:0 auto;
+    padding:18px 14px 32px;
+  }
+  .head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    border-bottom:2px solid var(--line);
+    padding-bottom:10px;
+    margin-bottom:16px;
+  }
+  .head h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:2px;
+    font-size:clamp(22px,4vw,32px);
+    margin:0;
+  }
+  .head h1 span{color:var(--safelight);}
+  .frame-counter{
+    font-size:12px;
+    letter-spacing:1px;
+    color:var(--muted);
+    text-align:right;
+  }
+  .frame-counter b{
+    display:block;
+    color:var(--safelight);
+    font-size:16px;
+    font-family:'Oswald',sans-serif;
+  }
+
+  .sprocket{
+    display:flex;
+    gap:6px;
+    padding:6px 0 14px;
+    overflow:hidden;
+  }
+  .sprocket div{
+    width:10px;height:14px;
+    background:var(--line);
+    border-radius:2px;
+    flex-shrink:0;
+  }
+
+  .swatches{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .swatch{
+    width:26px;height:26px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    cursor:pointer;
+    padding:0;
+  }
+  .swatch.active{
+    border-color:var(--ink);
+    box-shadow:0 0 0 2px var(--void), 0 0 0 3px var(--safelight);
+  }
+
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    padding:12px 14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    margin-bottom:16px;
+  }
+  .ctrl{display:flex;flex-direction:column;gap:6px;min-width:130px;flex:1;}
+  .ctrl label{
+    font-size:10px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .ctrl input[type=range]{accent-color:var(--safelight);width:100%;}
+  .ctrl select, .ctrl input[type=color]{
+    background:var(--void);
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:6px;
+    border-radius:4px;
+    font-family:inherit;
+    font-size:12px;
+    width:100%;
+  }
+  .ctrl input[type=color]{padding:2px;height:32px;cursor:pointer;}
+  .val-tag{
+    font-size:10px;
+    color:var(--safelight);
+    letter-spacing:1px;
+  }
+
+  .stage-wrap{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:10px;
+  }
+  #stage{
+    position:relative;
+    width:100%;
+    min-height:220px;
+    background:var(--void);
+    margin:0 auto;
+    overflow:hidden;
+    border-radius:2px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #finalCanvas{
+    max-width:100%;
+    display:block;
+    border-radius:2px;
+  }
+  #finalCanvas.hidden{display:none;}
+  .empty-mark{
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:1.5px;
+    text-align:center;
+    text-transform:uppercase;
+    padding:60px 10px;
+  }
+
+  .actions{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+    flex-wrap:wrap;
+  }
+  button.primary, button.ghost{
+    font-family:'Oswald',sans-serif;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    font-weight:600;
+    font-size:13px;
+    padding:12px 22px;
+    border-radius:4px;
+    cursor:pointer;
+    border:1px solid var(--line);
+  }
+  button.primary{
+    background:var(--safelight);
+    color:#1a0f0d;
+    border-color:var(--safelight);
+  }
+  button.primary:disabled{
+    background:var(--safelight-dim);
+    border-color:var(--safelight-dim);
+    color:#3a2320;
+    cursor:not-allowed;
+  }
+  button.ghost{
+    background:transparent;
+    color:var(--ink);
+  }
+  .hint{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:10px;
+    line-height:1.6;
+  }
+  .neon-app-wrapper input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div class="neon-app-wrapper">
+<div class="app">
+
+  <div class="head">
+    <h1>PhotoEffect<span>.Neon</span></h1>
+    <div class="frame-counter">STATUS<b id="statusLabel">IDLE</b></div>
+  </div>
+
+  <div class="sprocket" id="sprocketTop"></div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>Photo</label>
+      <button class="ghost" id="importBtn">Import Photo</button>
+    </div>
+    <div class="ctrl">
+      <label>Neon Color</label>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <div class="ctrl">
+      <label>Custom Color</label>
+      <input type="color" id="customColor" value="#00eaff">
+    </div>
+    <div class="ctrl">
+      <label>Edge Sensitivity <span class="val-tag" id="edgeSensVal">35</span></label>
+      <input type="range" id="edgeSens" min="5" max="100" value="35">
+    </div>
+    <div class="ctrl">
+      <label>Glow Intensity <span class="val-tag" id="glowIntVal">70</span></label>
+      <input type="range" id="glowIntensity" min="0" max="100" value="70">
+    </div>
+    <div class="ctrl">
+      <label>Glow Size <span class="val-tag" id="glowSizeVal">10</span></label>
+      <input type="range" id="glowSize" min="2" max="30" value="10">
+    </div>
+    <div class="ctrl">
+      <label>Background Darkness <span class="val-tag" id="bgDarkVal">70</span></label>
+      <input type="range" id="bgDark" min="0" max="100" value="70">
+    </div>
+    <div class="ctrl">
+      <label>Saturation <span class="val-tag" id="satVal">120</span>%</label>
+      <input type="range" id="saturation" min="50" max="200" value="120">
+    </div>
+  </div>
+
+  <div class="stage-wrap">
+    <div id="stage">
+      <canvas id="finalCanvas" class="hidden"></canvas>
+      <div class="empty-mark" id="emptyMark">Import a photo to start the neon effect</div>
+    </div>
+  </div>
+
+  <div class="sprocket" id="sprocketBottom"></div>
+
+  <div class="actions">
+    <button class="primary" id="downloadBtn" disabled>Download PNG</button>
+    <button class="ghost" id="resetBtn">Reset</button>
+  </div>
+
+  <input type="file" id="fileInput" accept="image/*">
+
+  <div class="hint">Upload a photo, pick a neon color (preset or custom), then adjust edge sensitivity, glow size &amp; intensity, background darkness, and saturation to generate the neon effect instantly right in your browser.</div>
+
+</div>
+</div>
+
+<script>
+(function(){
+  const wrap        = document.currentScript.previousElementSibling;
+  const importBtn   = wrap.querySelector('#importBtn');
+  const fileInput   = wrap.querySelector('#fileInput');
+  const stage       = wrap.querySelector('#stage');
+  const finalCanvas = wrap.querySelector('#finalCanvas');
+  const emptyMark   = wrap.querySelector('#emptyMark');
+  const downloadBtn = wrap.querySelector('#downloadBtn');
+  const resetBtn    = wrap.querySelector('#resetBtn');
+  const statusLabel = wrap.querySelector('#statusLabel');
+  const swatchesEl  = wrap.querySelector('#swatches');
+  const customColor = wrap.querySelector('#customColor');
+
+  const edgeSens     = wrap.querySelector('#edgeSens');
+  const glowIntensity= wrap.querySelector('#glowIntensity');
+  const glowSize     = wrap.querySelector('#glowSize');
+  const bgDark       = wrap.querySelector('#bgDark');
+  const saturation   = wrap.querySelector('#saturation');
+
+  const edgeSensVal = wrap.querySelector('#edgeSensVal');
+  const glowIntVal  = wrap.querySelector('#glowIntVal');
+  const glowSizeVal = wrap.querySelector('#glowSizeVal');
+  const bgDarkVal   = wrap.querySelector('#bgDarkVal');
+  const satVal      = wrap.querySelector('#satVal');
+
+  const ctx = finalCanvas.getContext('2d');
+
+  // ---------- decorative sprocket holes ----------
+  ['#sprocketTop','#sprocketBottom'].forEach(sel=>{
+    const el = wrap.querySelector(sel);
+    if(!el) return;
+    for(let i=0;i<40;i++){ const d=document.createElement('div'); el.appendChild(d); }
+  });
+
+  // ---------- neon color presets ----------
+  const PRESETS = [
+    {name:'Cyan',    hex:'#00eaff'},
+    {name:'Magenta', hex:'#ff2bd6'},
+    {name:'Safelight', hex:'#e0483e'},
+    {name:'Lime',    hex:'#39ff14'},
+    {name:'Violet',  hex:'#b026ff'},
+    {name:'Amber',   hex:'#ffb300'},
+  ];
+  let neonColor = PRESETS[0].hex;
+
+  PRESETS.forEach(p=>{
+    const b = document.createElement('button');
+    b.className = 'swatch' + (p.hex===neonColor?' active':'');
+    b.style.background = p.hex;
+    b.title = p.name;
+    b.type = 'button';
+    b.addEventListener('click', ()=>{
+      neonColor = p.hex;
+      customColor.value = p.hex;
+      [...swatchesEl.children].forEach(c=>c.classList.remove('active'));
+      b.classList.add('active');
+      render();
+    });
+    swatchesEl.appendChild(b);
+  });
+
+  customColor.addEventListener('input', ()=>{
+    neonColor = customColor.value;
+    [...swatchesEl.children].forEach(c=>c.classList.remove('active'));
+    render();
+  });
+
+  // ---------- state ----------
+  const MAX_DIM = 900;
+  let srcCanvas = null;   // offscreen canvas holding the scaled original image
+  let srcCtx = null;
+  let W = 0, H = 0;
+  let mag = null;         // Float32Array edge magnitude, normalized 0..1
+  let hasImage = false;
+
+  function hexToRgb(hex){
+    const h = hex.replace('#','');
+    const n = parseInt(h.length===3 ? h.split('').map(c=>c+c).join('') : h, 16);
+    return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+  }
+
+  function setStatus(t){ statusLabel.textContent = t; }
+
+  // ---------- image import ----------
+  importBtn.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      loadImage(img);
+    };
+    img.src = url;
+  });
+
+  function loadImage(img){
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const scale = Math.min(1, MAX_DIM / Math.max(w,h));
+    W = Math.round(w*scale);
+    H = Math.round(h*scale);
+
+    srcCanvas = document.createElement('canvas');
+    srcCanvas.width = W; srcCanvas.height = H;
+    srcCtx = srcCanvas.getContext('2d');
+    srcCtx.drawImage(img, 0, 0, W, H);
+
+    finalCanvas.width = W;
+    finalCanvas.height = H;
+    finalCanvas.classList.remove('hidden');
+    emptyMark.style.display = 'none';
+    downloadBtn.disabled = false;
+
+    computeEdges();
+    hasImage = true;
+    setStatus('READY');
+    render();
+  }
+
+  // ---------- Sobel edge detection (computed once per image) ----------
+  function computeEdges(){
+    const data = srcCtx.getImageData(0,0,W,H).data;
+    const gray = new Float32Array(W*H);
+    for(let i=0, p=0; i<data.length; i+=4, p++){
+      gray[p] = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+    }
+    mag = new Float32Array(W*H);
+    let maxMag = 1;
+    for(let y=1; y<H-1; y++){
+      for(let x=1; x<W-1; x++){
+        const i = y*W + x;
+        const gx =
+          -gray[i-W-1] + gray[i-W+1] +
+          -2*gray[i-1] + 2*gray[i+1] +
+          -gray[i+W-1] + gray[i+W+1];
+        const gy =
+          -gray[i-W-1] - 2*gray[i-W] - gray[i-W+1] +
+           gray[i+W-1] + 2*gray[i+W] + gray[i+W+1];
+        const m = Math.sqrt(gx*gx + gy*gy);
+        mag[i] = m;
+        if(m > maxMag) maxMag = m;
+      }
+    }
+    for(let i=0;i<mag.length;i++) mag[i] = mag[i] / maxMag;
+  }
+
+  // ---------- render pipeline: edge mask -> bloom -> composite ----------
+  let renderTimer = null;
+  function render(){
+    if(!hasImage) return;
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(doRender, 20);
+  }
+
+  function doRender(){
+    setStatus('RENDERING');
+
+    const sens   = parseInt(edgeSens.value,10) / 100;       // 0..1 threshold
+    const intens = parseInt(glowIntensity.value,10) / 100;  // 0..1
+    const gsize  = parseInt(glowSize.value,10);             // px
+    const dark   = parseInt(bgDark.value,10) / 100;         // 0..1
+    const sat    = parseInt(saturation.value,10);           // %
+
+    const {r,g,b} = hexToRgb(neonColor);
+    const threshold = 1 - sens; // higher sensitivity -> lower threshold -> more edges
+
+    // build edge mask image data
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = W; maskCanvas.height = H;
+    const maskCtx = maskCanvas.getContext('2d');
+    const maskData = maskCtx.createImageData(W,H);
+    for(let p=0, i=0; p<mag.length; p++, i+=4){
+      let a = mag[p];
+      a = a > threshold ? (a - threshold) / (1 - threshold) : 0;
+      maskData.data[i]   = r;
+      maskData.data[i+1] = g;
+      maskData.data[i+2] = b;
+      maskData.data[i+3] = Math.min(255, a*255);
+    }
+    maskCtx.putImageData(maskData, 0, 0);
+
+    // final composite canvas
+    ctx.clearRect(0,0,W,H);
+
+    // 1) darkened + saturated base photo
+    ctx.filter = `brightness(${(1-dark*0.85).toFixed(2)}) saturate(${sat}%) contrast(105%)`;
+    ctx.drawImage(srcCanvas, 0, 0, W, H);
+    ctx.filter = 'none';
+
+    // 2) bloom passes (wide soft glow -> tight bright core), additive blend
+    ctx.globalCompositeOperation = 'lighter';
+
+    const passes = [
+      { blur: gsize*2.2, alpha: 0.55*intens },
+      { blur: gsize*1.2, alpha: 0.75*intens },
+      { blur: gsize*0.4, alpha: 0.9*intens  },
+      { blur: 0,         alpha: 1.0*intens  },
+    ];
+    passes.forEach(pass=>{
+      ctx.globalAlpha = Math.max(0, Math.min(1, pass.alpha));
+      ctx.filter = pass.blur > 0 ? `blur(${pass.blur}px)` : 'none';
+      ctx.drawImage(maskCanvas, 0, 0, W, H);
+    });
+
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+
+    setStatus('READY');
+  }
+
+  // ---------- controls ----------
+  function bindRange(el, tag, cb){
+    el.addEventListener('input', ()=>{
+      if(tag) tag.textContent = el.value;
+      if(cb) cb();
+      render();
+    });
+  }
+  bindRange(edgeSens, edgeSensVal);
+  bindRange(glowIntensity, glowIntVal);
+  bindRange(glowSize, glowSizeVal);
+  bindRange(bgDark, bgDarkVal);
+  bindRange(saturation, satVal);
+
+  downloadBtn.addEventListener('click', ()=>{
+    if(!hasImage) return;
+    const link = document.createElement('a');
+    link.download = 'photoeffect-neon.png';
+    link.href = finalCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    hasImage = false;
+    srcCanvas = null; mag = null;
+    finalCanvas.classList.add('hidden');
+    emptyMark.style.display = 'block';
+    downloadBtn.disabled = true;
+    fileInput.value = '';
+    setStatus('IDLE');
+  });
+
+})();
+</script>
+</body>
+</html>
