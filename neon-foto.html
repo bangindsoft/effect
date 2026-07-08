@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PhotoEffect Neon</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Monoton&family=Righteous&family=Pacifico&family=Bungee&family=Permanent+Marker&display=swap');
 
   :root{
     --void:#141311;
@@ -100,7 +100,8 @@
     border-radius:6px;
     margin-bottom:16px;
   }
-  .ctrl{display:flex;flex-direction:column;gap:6px;min-width:130px;flex:1;}
+  .ctrl{display:flex;flex-direction:column;gap:6px;min-width:140px;flex:1;}
+  .ctrl.wide{flex-basis:100%;}
   .ctrl label{
     font-size:10px;
     letter-spacing:1.5px;
@@ -108,14 +109,14 @@
     color:var(--muted);
   }
   .ctrl input[type=range]{accent-color:var(--safelight);width:100%;}
-  .ctrl select, .ctrl input[type=color]{
+  .ctrl select, .ctrl input[type=color], .ctrl input[type=text]{
     background:var(--void);
     border:1px solid var(--line);
     color:var(--ink);
-    padding:6px;
+    padding:8px;
     border-radius:4px;
     font-family:inherit;
-    font-size:12px;
+    font-size:13px;
     width:100%;
   }
   .ctrl input[type=color]{padding:2px;height:32px;cursor:pointer;}
@@ -147,7 +148,10 @@
     max-width:100%;
     display:block;
     border-radius:2px;
+    touch-action:none;
+    cursor:grab;
   }
+  #finalCanvas.dragging{cursor:grabbing;}
   #finalCanvas.hidden{display:none;}
   .empty-mark{
     font-size:11px;
@@ -211,9 +215,24 @@
   <div class="sprocket" id="sprocketTop"></div>
 
   <div class="controls">
+    <div class="ctrl wide">
+      <label>Neon Text</label>
+      <input type="text" id="textInput" placeholder="Type your neon text..." maxlength="40" value="NEON">
+    </div>
     <div class="ctrl">
-      <label>Photo</label>
+      <label>Background Photo</label>
       <button class="ghost" id="importBtn">Import Photo</button>
+    </div>
+    <div class="ctrl">
+      <label>Font</label>
+      <select id="fontSelect">
+        <option value="Monoton">Monoton (Tube)</option>
+        <option value="Righteous">Righteous</option>
+        <option value="Bungee">Bungee</option>
+        <option value="Pacifico">Pacifico (Script)</option>
+        <option value="Permanent Marker">Permanent Marker</option>
+        <option value="Oswald">Oswald (Bold)</option>
+      </select>
     </div>
     <div class="ctrl">
       <label>Neon Color</label>
@@ -224,31 +243,27 @@
       <input type="color" id="customColor" value="#00eaff">
     </div>
     <div class="ctrl">
-      <label>Edge Sensitivity <span class="val-tag" id="edgeSensVal">35</span></label>
-      <input type="range" id="edgeSens" min="5" max="100" value="35">
+      <label>Text Size <span class="val-tag" id="textSizeVal">70</span>px</label>
+      <input type="range" id="textSize" min="18" max="200" value="70">
     </div>
     <div class="ctrl">
-      <label>Glow Intensity <span class="val-tag" id="glowIntVal">70</span></label>
-      <input type="range" id="glowIntensity" min="0" max="100" value="70">
+      <label>Glow Intensity <span class="val-tag" id="glowIntVal">80</span></label>
+      <input type="range" id="glowIntensity" min="0" max="100" value="80">
     </div>
     <div class="ctrl">
-      <label>Glow Size <span class="val-tag" id="glowSizeVal">10</span></label>
-      <input type="range" id="glowSize" min="2" max="30" value="10">
+      <label>Glow Size <span class="val-tag" id="glowSizeVal">18</span></label>
+      <input type="range" id="glowSize" min="2" max="45" value="18">
     </div>
     <div class="ctrl">
-      <label>Background Darkness <span class="val-tag" id="bgDarkVal">70</span></label>
-      <input type="range" id="bgDark" min="0" max="100" value="70">
-    </div>
-    <div class="ctrl">
-      <label>Saturation <span class="val-tag" id="satVal">120</span>%</label>
-      <input type="range" id="saturation" min="50" max="200" value="120">
+      <label>Background Brightness <span class="val-tag" id="bgBrightVal">60</span></label>
+      <input type="range" id="bgBright" min="0" max="100" value="60">
     </div>
   </div>
 
   <div class="stage-wrap">
     <div id="stage">
       <canvas id="finalCanvas" class="hidden"></canvas>
-      <div class="empty-mark" id="emptyMark">Import a photo to start the neon effect</div>
+      <div class="empty-mark" id="emptyMark">Import a background photo to start</div>
     </div>
   </div>
 
@@ -261,7 +276,7 @@
 
   <input type="file" id="fileInput" accept="image/*">
 
-  <div class="hint">Upload a photo, pick a neon color (preset or custom), then adjust edge sensitivity, glow size &amp; intensity, background darkness, and saturation to generate the neon effect instantly right in your browser.</div>
+  <div class="hint">Import a background photo, type your neon text, pick a font &amp; color, then adjust text size, glow intensity/size, and background brightness. Drag the text directly on the canvas to reposition it.</div>
 
 </div>
 </div>
@@ -279,18 +294,18 @@
   const statusLabel = wrap.querySelector('#statusLabel');
   const swatchesEl  = wrap.querySelector('#swatches');
   const customColor = wrap.querySelector('#customColor');
+  const textInput   = wrap.querySelector('#textInput');
+  const fontSelect  = wrap.querySelector('#fontSelect');
 
-  const edgeSens     = wrap.querySelector('#edgeSens');
-  const glowIntensity= wrap.querySelector('#glowIntensity');
-  const glowSize     = wrap.querySelector('#glowSize');
-  const bgDark       = wrap.querySelector('#bgDark');
-  const saturation   = wrap.querySelector('#saturation');
+  const textSize      = wrap.querySelector('#textSize');
+  const glowIntensity = wrap.querySelector('#glowIntensity');
+  const glowSize       = wrap.querySelector('#glowSize');
+  const bgBright       = wrap.querySelector('#bgBright');
 
-  const edgeSensVal = wrap.querySelector('#edgeSensVal');
+  const textSizeVal = wrap.querySelector('#textSizeVal');
   const glowIntVal  = wrap.querySelector('#glowIntVal');
   const glowSizeVal = wrap.querySelector('#glowSizeVal');
-  const bgDarkVal   = wrap.querySelector('#bgDarkVal');
-  const satVal      = wrap.querySelector('#satVal');
+  const bgBrightVal = wrap.querySelector('#bgBrightVal');
 
   const ctx = finalCanvas.getContext('2d');
 
@@ -303,12 +318,12 @@
 
   // ---------- neon color presets ----------
   const PRESETS = [
-    {name:'Cyan',    hex:'#00eaff'},
-    {name:'Magenta', hex:'#ff2bd6'},
+    {name:'Cyan',      hex:'#00eaff'},
+    {name:'Magenta',   hex:'#ff2bd6'},
     {name:'Safelight', hex:'#e0483e'},
-    {name:'Lime',    hex:'#39ff14'},
-    {name:'Violet',  hex:'#b026ff'},
-    {name:'Amber',   hex:'#ffb300'},
+    {name:'Lime',      hex:'#39ff14'},
+    {name:'Violet',    hex:'#b026ff'},
+    {name:'Amber',     hex:'#ffb300'},
   ];
   let neonColor = PRESETS[0].hex;
 
@@ -336,16 +351,21 @@
 
   // ---------- state ----------
   const MAX_DIM = 900;
-  let srcCanvas = null;   // offscreen canvas holding the scaled original image
-  let srcCtx = null;
+  let srcImg = null;
   let W = 0, H = 0;
-  let mag = null;         // Float32Array edge magnitude, normalized 0..1
   let hasImage = false;
+  let posX = 0.5, posY = 0.5; // fraction of canvas
+  let dragging = false;
 
   function hexToRgb(hex){
     const h = hex.replace('#','');
     const n = parseInt(h.length===3 ? h.split('').map(c=>c+c).join('') : h, 16);
     return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+  }
+  function lighten(hex, amt){
+    const {r,g,b} = hexToRgb(hex);
+    const L = c => Math.round(c + (255-c)*amt);
+    return `rgb(${L(r)},${L(g)},${L(b)})`;
   }
 
   function setStatus(t){ statusLabel.textContent = t; }
@@ -369,11 +389,7 @@
     const scale = Math.min(1, MAX_DIM / Math.max(w,h));
     W = Math.round(w*scale);
     H = Math.round(h*scale);
-
-    srcCanvas = document.createElement('canvas');
-    srcCanvas.width = W; srcCanvas.height = H;
-    srcCtx = srcCanvas.getContext('2d');
-    srcCtx.drawImage(img, 0, 0, W, H);
+    srcImg = img;
 
     finalCanvas.width = W;
     finalCanvas.height = H;
@@ -381,117 +397,128 @@
     emptyMark.style.display = 'none';
     downloadBtn.disabled = false;
 
-    computeEdges();
+    posX = 0.5; posY = 0.5;
     hasImage = true;
     setStatus('READY');
     render();
   }
 
-  // ---------- Sobel edge detection (computed once per image) ----------
-  function computeEdges(){
-    const data = srcCtx.getImageData(0,0,W,H).data;
-    const gray = new Float32Array(W*H);
-    for(let i=0, p=0; i<data.length; i+=4, p++){
-      gray[p] = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
-    }
-    mag = new Float32Array(W*H);
-    let maxMag = 1;
-    for(let y=1; y<H-1; y++){
-      for(let x=1; x<W-1; x++){
-        const i = y*W + x;
-        const gx =
-          -gray[i-W-1] + gray[i-W+1] +
-          -2*gray[i-1] + 2*gray[i+1] +
-          -gray[i+W-1] + gray[i+W+1];
-        const gy =
-          -gray[i-W-1] - 2*gray[i-W] - gray[i-W+1] +
-           gray[i+W-1] + 2*gray[i+W] + gray[i+W+1];
-        const m = Math.sqrt(gx*gx + gy*gy);
-        mag[i] = m;
-        if(m > maxMag) maxMag = m;
-      }
-    }
-    for(let i=0;i<mag.length;i++) mag[i] = mag[i] / maxMag;
+  // ---------- drag to reposition text ----------
+  function getPos(e){
+    const rect = finalCanvas.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x: (cx / rect.width) * W, y: (cy / rect.height) * H };
   }
 
-  // ---------- render pipeline: edge mask -> bloom -> composite ----------
+  function textBoxAt(px, py){
+    const size = parseInt(textSize.value,10);
+    const font = `700 ${size}px "${fontSelect.value}", sans-serif`;
+    ctx.font = font;
+    const txt = textInput.value || '';
+    const tw = ctx.measureText(txt).width;
+    const th = size * 1.15;
+    return { x: px - tw/2, y: py - th/2, w: tw, h: th };
+  }
+
+  finalCanvas.addEventListener('pointerdown', (e)=>{
+    if(!hasImage) return;
+    const p = getPos(e);
+    const box = textBoxAt(posX*W, posY*H);
+    if(p.x >= box.x-10 && p.x <= box.x+box.w+10 && p.y >= box.y-10 && p.y <= box.y+box.h+10){
+      dragging = true;
+      finalCanvas.classList.add('dragging');
+    }
+  });
+  window.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    const p = getPos(e);
+    posX = Math.min(1, Math.max(0, p.x / W));
+    posY = Math.min(1, Math.max(0, p.y / H));
+    render();
+  });
+  window.addEventListener('pointerup', ()=>{
+    dragging = false;
+    finalCanvas.classList.remove('dragging');
+  });
+
+  // ---------- render pipeline ----------
   let renderTimer = null;
   function render(){
     if(!hasImage) return;
     clearTimeout(renderTimer);
-    renderTimer = setTimeout(doRender, 20);
+    renderTimer = setTimeout(doRender, 15);
   }
 
   function doRender(){
     setStatus('RENDERING');
 
-    const sens   = parseInt(edgeSens.value,10) / 100;       // 0..1 threshold
-    const intens = parseInt(glowIntensity.value,10) / 100;  // 0..1
-    const gsize  = parseInt(glowSize.value,10);             // px
-    const dark   = parseInt(bgDark.value,10) / 100;         // 0..1
-    const sat    = parseInt(saturation.value,10);           // %
+    const size    = parseInt(textSize.value,10);
+    const intens  = parseInt(glowIntensity.value,10) / 100;
+    const gsize   = parseInt(glowSize.value,10);
+    const bright  = parseInt(bgBright.value,10) / 100; // 0..1
+    const txt     = textInput.value || '';
+    const font    = `700 ${size}px "${fontSelect.value}", sans-serif`;
 
-    const {r,g,b} = hexToRgb(neonColor);
-    const threshold = 1 - sens; // higher sensitivity -> lower threshold -> more edges
-
-    // build edge mask image data
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = W; maskCanvas.height = H;
-    const maskCtx = maskCanvas.getContext('2d');
-    const maskData = maskCtx.createImageData(W,H);
-    for(let p=0, i=0; p<mag.length; p++, i+=4){
-      let a = mag[p];
-      a = a > threshold ? (a - threshold) / (1 - threshold) : 0;
-      maskData.data[i]   = r;
-      maskData.data[i+1] = g;
-      maskData.data[i+2] = b;
-      maskData.data[i+3] = Math.min(255, a*255);
-    }
-    maskCtx.putImageData(maskData, 0, 0);
-
-    // final composite canvas
     ctx.clearRect(0,0,W,H);
 
-    // 1) darkened + saturated base photo
-    ctx.filter = `brightness(${(1-dark*0.85).toFixed(2)}) saturate(${sat}%) contrast(105%)`;
-    ctx.drawImage(srcCanvas, 0, 0, W, H);
+    // 1) background photo with brightness control
+    ctx.filter = `brightness(${(0.15 + bright*0.85).toFixed(2)})`;
+    ctx.drawImage(srcImg, 0, 0, W, H);
     ctx.filter = 'none';
 
-    // 2) bloom passes (wide soft glow -> tight bright core), additive blend
+    if(!txt){ setStatus('READY'); return; }
+
+    const px = posX * W, py = posY * H;
+    const core = lighten(neonColor, 0.65);
+
+    // 2) glow bloom passes (wide soft -> tight bright), additive blend
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = font;
     ctx.globalCompositeOperation = 'lighter';
 
     const passes = [
-      { blur: gsize*2.2, alpha: 0.55*intens },
-      { blur: gsize*1.2, alpha: 0.75*intens },
-      { blur: gsize*0.4, alpha: 0.9*intens  },
-      { blur: 0,         alpha: 1.0*intens  },
+      { blur: gsize*2.4, alpha: 0.45*intens, color: neonColor },
+      { blur: gsize*1.4, alpha: 0.65*intens, color: neonColor },
+      { blur: gsize*0.6, alpha: 0.85*intens, color: neonColor },
+      { blur: gsize*0.15,alpha: 1.0*intens,  color: neonColor },
     ];
     passes.forEach(pass=>{
       ctx.globalAlpha = Math.max(0, Math.min(1, pass.alpha));
-      ctx.filter = pass.blur > 0 ? `blur(${pass.blur}px)` : 'none';
-      ctx.drawImage(maskCanvas, 0, 0, W, H);
+      ctx.filter = pass.blur > 0.2 ? `blur(${pass.blur}px)` : 'none';
+      ctx.fillStyle = pass.color;
+      ctx.fillText(txt, px, py);
     });
 
+    // 3) bright core (hot center of the tube)
     ctx.filter = 'none';
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = Math.min(1, 0.85 + intens*0.15);
+    ctx.fillStyle = core;
+    ctx.fillText(txt, px, py);
+
+    ctx.restore();
     ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
 
     setStatus('READY');
   }
 
   // ---------- controls ----------
-  function bindRange(el, tag, cb){
+  function bindRange(el, tag){
     el.addEventListener('input', ()=>{
       if(tag) tag.textContent = el.value;
-      if(cb) cb();
       render();
     });
   }
-  bindRange(edgeSens, edgeSensVal);
+  bindRange(textSize, textSizeVal);
   bindRange(glowIntensity, glowIntVal);
   bindRange(glowSize, glowSizeVal);
-  bindRange(bgDark, bgDarkVal);
-  bindRange(saturation, satVal);
+  bindRange(bgBright, bgBrightVal);
+
+  textInput.addEventListener('input', render);
+  fontSelect.addEventListener('change', render);
 
   downloadBtn.addEventListener('click', ()=>{
     if(!hasImage) return;
@@ -503,11 +530,12 @@
 
   resetBtn.addEventListener('click', ()=>{
     hasImage = false;
-    srcCanvas = null; mag = null;
+    srcImg = null;
     finalCanvas.classList.add('hidden');
     emptyMark.style.display = 'block';
     downloadBtn.disabled = true;
     fileInput.value = '';
+    textInput.value = 'NEON';
     setStatus('IDLE');
   });
 
