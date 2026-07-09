@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhotoEffect.Mosaic</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --void:#141311;
+    --panel:#1c1b18;
+    --paper:#eee7d8;
+    --ink:#eee7d8;
+    --muted:#8a8375;
+    --line:#332f28;
+    --safelight:#e0483e;
+    --safelight-dim:#7a2b26;
+  }
+  .photoeffect-mosaic-wrapper, .photoeffect-mosaic-wrapper *{box-sizing:border-box;}
+  .photoeffect-mosaic-wrapper{
+    margin:0;
+    background:var(--void);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  .pe-app{
+    max-width:820px;
+    margin:0 auto;
+    padding:18px 14px 32px;
+  }
+  .pe-head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    border-bottom:2px solid var(--line);
+    padding-bottom:10px;
+    margin-bottom:16px;
+  }
+  .pe-head h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:2px;
+    font-size:clamp(22px,4vw,32px);
+    margin:0;
+  }
+  .pe-head h1 span{color:var(--safelight);}
+  .pe-eyebrow{
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+    text-align:right;
+  }
+
+  .pe-sprocket{
+    display:flex;
+    gap:6px;
+    padding:6px 0;
+    overflow:hidden;
+  }
+  .pe-sprocket div{
+    width:10px;height:14px;
+    background:var(--line);
+    border-radius:2px;
+    flex-shrink:0;
+  }
+
+  .pe-steps{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .pe-step{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:10px 12px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    flex:1 1 220px;
+  }
+  .pe-step-num{
+    font-family:'Oswald',sans-serif;
+    font-size:14px;
+    font-weight:700;
+    color:var(--void);
+    background:var(--muted);
+    width:22px;height:22px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .pe-step.pe-step-done .pe-step-num{background:var(--safelight);}
+  .pe-step-text{
+    font-size:11px;
+    line-height:1.4;
+    color:var(--muted);
+  }
+  .pe-step-text b{
+    display:block;
+    font-family:'Oswald',sans-serif;
+    font-size:12px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--ink);
+  }
+
+  .pe-controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    padding:12px 14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    margin-bottom:16px;
+    align-items:center;
+  }
+  .pe-ctrl{display:flex;flex-direction:column;gap:4px;min-width:160px;flex:1;}
+  .pe-ctrl label{
+    font-size:10px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .pe-ctrl input[type=range]{accent-color:var(--safelight);width:100%;}
+
+  .pe-actions{
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+    flex-wrap:wrap;
+  }
+  button.pe-primary, button.pe-ghost{
+    font-family:'Oswald',sans-serif;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    font-weight:600;
+    font-size:13px;
+    padding:12px 22px;
+    border-radius:4px;
+    cursor:pointer;
+    border:1px solid var(--line);
+  }
+  button.pe-primary{
+    background:var(--safelight);
+    color:#1a0f0d;
+    border-color:var(--safelight);
+  }
+  button.pe-primary:hover{background:#ea5c52;}
+  button.pe-ghost{
+    background:transparent;
+    color:var(--ink);
+  }
+  button.pe-ghost:hover{border-color:var(--muted);}
+  button:disabled{opacity:0.4;cursor:not-allowed;}
+  button:focus-visible{outline:2px solid var(--safelight); outline-offset:2px;}
+
+  .pe-status{
+    font-size:11px;
+    color:var(--muted);
+    margin:0 0 16px;
+    line-height:1.6;
+  }
+  .pe-status.pe-warn{color:var(--safelight);}
+  .pe-status.pe-ok{color:var(--muted);}
+  .pe-status.pe-ok b{color:var(--ink);}
+
+  .pe-stage-wrap{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:10px;
+  }
+  #peStage{
+    position:relative;
+    width:100%;
+    max-width:640px;
+    aspect-ratio:4/3;
+    background:var(--paper);
+    margin:0 auto;
+    overflow:hidden;
+    border-radius:2px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+  }
+  .pe-empty-mark{
+    font-size:11px;
+    color:#9c9376;
+    letter-spacing:1px;
+    text-align:center;
+    pointer-events:none;
+    padding:0 20px;
+  }
+  .pe-empty-mark strong{
+    display:block;
+    font-family:'Oswald',sans-serif;
+    font-size:18px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .pe-canvas-wrap{
+    position:absolute;
+    inset:0;
+    display:none;
+  }
+  .pe-canvas-wrap.pe-active{display:block;}
+  .pe-canvas-wrap canvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+  }
+  #peMosaicCanvas{
+    clip-path: inset(0 0 0 var(--reveal, 50%));
+  }
+  .pe-tag{
+    position:absolute;
+    top:4px;
+    font-size:9px;
+    background:rgba(20,19,17,.65);
+    color:var(--ink);
+    padding:2px 5px;
+    border-radius:2px;
+    pointer-events:none;
+    letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  .pe-tag-left{left:4px;}
+  .pe-tag-right{right:4px;}
+  .pe-divider{
+    position:absolute;
+    top:0;
+    bottom:0;
+    left:var(--reveal, 50%);
+    width:2px;
+    background:var(--safelight);
+    transform:translateX(-1px);
+    pointer-events:none;
+  }
+  .pe-handle{
+    position:absolute;
+    top:50%;
+    left:var(--reveal, 50%);
+    transform:translate(-50%,-50%);
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:var(--safelight);
+    border:2px solid var(--paper);
+    cursor:ew-resize;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+  }
+  .pe-handle:before{
+    content:'\2194';
+    color:#1a0f0d;
+    font-size:15px;
+    font-weight:bold;
+  }
+  .pe-progress{
+    position:absolute;
+    inset:0;
+    background:rgba(20,19,17,.85);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .pe-progress.pe-show{display:flex;}
+
+  .pe-hint{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:10px;
+    line-height:1.6;
+  }
+  .photoeffect-mosaic-wrapper input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div class="photoeffect-mosaic-wrapper">
+<div class="pe-app">
+
+  <div class="pe-head">
+    <div>
+      <div class="pe-sprocket">
+        <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+      </div>
+      <h1>PhotoEffect<span>.Mosaic</span></h1>
+    </div>
+    <div class="pe-eyebrow">Folder &rarr; Main Photo &rarr; Mosaic</div>
+  </div>
+
+  <div class="pe-steps">
+    <div class="pe-step" id="peStep1">
+      <div class="pe-step-num">1</div>
+      <div class="pe-step-text"><b>Source photos</b><span id="peStep1Text">Select a folder with 10+ photos</span></div>
+    </div>
+    <div class="pe-step" id="peStep2">
+      <div class="pe-step-num">2</div>
+      <div class="pe-step-text"><b>Main photo</b><span id="peStep2Text">Import the photo to turn into a mosaic</span></div>
+    </div>
+  </div>
+
+  <div class="pe-actions">
+    <button class="pe-primary" id="peFolderBtn">Select Photo Folder</button>
+    <button class="pe-primary" id="peImportBtn" disabled>Import Main Photo</button>
+    <button class="pe-ghost" id="peDownloadBtn" disabled>Download Mosaic</button>
+    <button class="pe-ghost" id="peFullscreenBtn">Fullscreen</button>
+  </div>
+
+  <p class="pe-status pe-warn" id="peStatus">No source photos selected yet. Choose a folder that contains at least 10 photos &mdash; each grid tile in your mosaic will be filled with one of them.</p>
+
+  <div class="pe-controls">
+    <div class="pe-ctrl">
+      <label>Grid Columns</label>
+      <input type="range" id="peColsSlider" min="10" max="60" value="25" disabled>
+    </div>
+    <div class="pe-ctrl">
+      <label>Grout</label>
+      <input type="range" id="peGroutSlider" min="0" max="4" value="1" disabled>
+    </div>
+  </div>
+
+  <div class="pe-stage-wrap">
+    <div id="peStage">
+      <div class="pe-empty-mark" id="peEmptyMsg">
+        <strong>No photo yet</strong>
+        Click here to select your photo folder first
+      </div>
+
+      <div class="pe-canvas-wrap" id="peCanvasWrap">
+        <canvas id="peOriginalCanvas"></canvas>
+        <canvas id="peMosaicCanvas"></canvas>
+        <div class="pe-tag pe-tag-left">Original</div>
+        <div class="pe-tag pe-tag-right">Mosaic</div>
+        <div class="pe-divider" id="peDivider"></div>
+        <div class="pe-handle" id="peHandle"></div>
+      </div>
+
+      <div class="pe-progress" id="peProgress">Building mosaic&hellip;</div>
+    </div>
+  </div>
+
+  <p class="pe-hint">Step 1: select a folder with at least 10 photos &mdash; these fill the mosaic tiles. Step 2: import the main photo. Drag the handle to compare original vs. mosaic. Nothing is uploaded &mdash; everything runs in your browser.</p>
+
+  <input type="file" id="peFolderInput" webkitdirectory directory multiple accept="image/*">
+  <input type="file" id="peFileInput" accept="image/*">
+</div>
+</div>
+
+<script>
+(function(){
+  const stage = document.getElementById('peStage');
+  const emptyMsg = document.getElementById('peEmptyMsg');
+  const canvasWrap = document.getElementById('peCanvasWrap');
+  const originalCanvas = document.getElementById('peOriginalCanvas');
+  const mosaicCanvas = document.getElementById('peMosaicCanvas');
+  const divider = document.getElementById('peDivider');
+  const handle = document.getElementById('peHandle');
+  const progress = document.getElementById('peProgress');
+
+  const folderBtn = document.getElementById('peFolderBtn');
+  const importBtn = document.getElementById('peImportBtn');
+  const downloadBtn = document.getElementById('peDownloadBtn');
+  const fullscreenBtn = document.getElementById('peFullscreenBtn');
+  const folderInput = document.getElementById('peFolderInput');
+  const fileInput = document.getElementById('peFileInput');
+  const colsSlider = document.getElementById('peColsSlider');
+  const groutSlider = document.getElementById('peGroutSlider');
+  const statusEl = document.getElementById('peStatus');
+  const step1 = document.getElementById('peStep1');
+  const step1Text = document.getElementById('peStep1Text');
+  const step2 = document.getElementById('peStep2');
+  const step2Text = document.getElementById('peStep2Text');
+
+  const MIN_PHOTOS = 10;
+  const MAX_CELLS = 5000;
+
+  let currentImg = null;
+  let tilePhotos = []; // {bitmap, w, h, avg:[r,g,b]}
+
+  function setReveal(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    canvasWrap.style.setProperty('--reveal', pct + '%');
+  }
+
+  function dragStart(e){
+    e.preventDefault();
+    document.addEventListener('mousemove', dragMove);
+    document.addEventListener('mouseup', dragEnd);
+    document.addEventListener('touchmove', dragMove, {passive:false});
+    document.addEventListener('touchend', dragEnd);
+  }
+  function dragMove(e){
+    e.preventDefault();
+    const rect = canvasWrap.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const pct = ((clientX - rect.left) / rect.width) * 100;
+    setReveal(pct);
+  }
+  function dragEnd(){
+    document.removeEventListener('mousemove', dragMove);
+    document.removeEventListener('mouseup', dragEnd);
+    document.removeEventListener('touchmove', dragMove);
+    document.removeEventListener('touchend', dragEnd);
+  }
+  handle.addEventListener('mousedown', dragStart);
+  handle.addEventListener('touchstart', dragStart, {passive:false});
+  divider.addEventListener('mousedown', dragStart);
+
+  function averageColorOf(bitmap){
+    const c = document.createElement('canvas');
+    c.width = 1; c.height = 1;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(bitmap, 0, 0, 1, 1);
+    const d = ctx.getImageData(0, 0, 1, 1).data;
+    return [d[0], d[1], d[2]];
+  }
+
+  function updateStatus(){
+    if(tilePhotos.length === 0){
+      statusEl.className = 'pe-status pe-warn';
+      statusEl.textContent = 'No source photos selected yet. Choose a folder that contains at least ' + MIN_PHOTOS + ' photos \u2014 each grid tile in your mosaic will be filled with one of them.';
+      step1Text.textContent = 'Select a folder with 10+ photos';
+      step1.classList.remove('pe-step-done');
+    } else if(tilePhotos.length < MIN_PHOTOS){
+      statusEl.className = 'pe-status pe-warn';
+      statusEl.textContent = 'Only ' + tilePhotos.length + ' photo(s) found in that folder. Please choose a folder with at least ' + MIN_PHOTOS + ' photos.';
+      step1Text.textContent = tilePhotos.length + ' found \u2014 need ' + MIN_PHOTOS + '+';
+      step1.classList.remove('pe-step-done');
+    } else {
+      statusEl.className = 'pe-status pe-ok';
+      statusEl.innerHTML = '<b>' + tilePhotos.length + ' source photos</b> ready. Now import the main photo you want to turn into a mosaic.';
+      step1Text.textContent = tilePhotos.length + ' photos loaded';
+      step1.classList.add('pe-step-done');
+    }
+    importBtn.disabled = tilePhotos.length < MIN_PHOTOS;
+
+    if(currentImg){
+      step2Text.textContent = 'Main photo loaded';
+      step2.classList.add('pe-step-done');
+    } else {
+      step2Text.textContent = 'Import the photo to turn into a mosaic';
+      step2.classList.remove('pe-step-done');
+    }
+  }
+
+  async function loadFolder(fileList){
+    const files = Array.from(fileList).filter(function(f){ return f.type && f.type.startsWith('image/'); });
+    if(files.length === 0){
+      tilePhotos = [];
+      updateStatus();
+      return;
+    }
+    folderBtn.disabled = true;
+    folderBtn.textContent = 'Loading photos\u2026';
+    try{
+      const loaded = await Promise.all(files.map(function(f){
+        return createImageBitmap(f).catch(function(){ return null; });
+      }));
+      tilePhotos = loaded.filter(Boolean).map(function(bitmap){
+        return { bitmap: bitmap, w: bitmap.width, h: bitmap.height, avg: averageColorOf(bitmap) };
+      });
+    } catch(err){
+      tilePhotos = [];
+    }
+    folderBtn.disabled = false;
+    folderBtn.textContent = 'Select Photo Folder';
+    updateStatus();
+    if(currentImg && tilePhotos.length >= MIN_PHOTOS){
+      renderPhotomosaic();
+    }
+  }
+
+  function renderPhotomosaic(){
+    if(!currentImg || tilePhotos.length < MIN_PHOTOS) return;
+    progress.classList.add('pe-show');
+
+    // Let the browser paint the progress overlay before the heavy work
+    setTimeout(function(){
+      const w = currentImg.naturalWidth;
+      const h = currentImg.naturalHeight;
+      let cols = parseInt(colsSlider.value, 10);
+      let rows = Math.max(1, Math.round((h / w) * cols));
+      if(cols * rows > MAX_CELLS){
+        const factor = Math.sqrt(MAX_CELLS / (cols * rows));
+        cols = Math.max(4, Math.round(cols * factor));
+        rows = Math.max(4, Math.round(rows * factor));
+      }
+      const cellW = w / cols;
+      const cellH = h / rows;
+      const grout = parseInt(groutSlider.value, 10);
+
+      // Average color per grid cell, computed via smoothed downscale
+      const small = document.createElement('canvas');
+      small.width = cols; small.height = rows;
+      const sctx = small.getContext('2d');
+      sctx.imageSmoothingEnabled = true;
+      sctx.imageSmoothingQuality = 'high';
+      sctx.drawImage(currentImg, 0, 0, cols, rows);
+      const cellColors = sctx.getImageData(0, 0, cols, rows).data;
+
+      mosaicCanvas.width = w;
+      mosaicCanvas.height = h;
+      const mctx = mosaicCanvas.getContext('2d');
+      mctx.clearRect(0, 0, w, h);
+
+      for(let r = 0; r < rows; r++){
+        for(let c = 0; c < cols; c++){
+          const idx = (r * cols + c) * 4;
+          const cr = cellColors[idx], cg = cellColors[idx + 1], cb = cellColors[idx + 2];
+
+          let best = tilePhotos[0], bestDist = Infinity;
+          for(let i = 0; i < tilePhotos.length; i++){
+            const tp = tilePhotos[i];
+            const dr = tp.avg[0] - cr, dg = tp.avg[1] - cg, db = tp.avg[2] - cb;
+            const dist = dr * dr + dg * dg + db * db;
+            if(dist < bestDist){ bestDist = dist; best = tp; }
+          }
+
+          const destX = c * cellW, destY = r * cellH;
+          const scale = Math.max(cellW / best.w, cellH / best.h);
+          const cropW = cellW / scale, cropH = cellH / scale;
+          const sx = (best.w - cropW) / 2, sy = (best.h - cropH) / 2;
+          mctx.drawImage(best.bitmap, sx, sy, cropW, cropH, destX, destY, cellW, cellH);
+        }
+      }
+
+      if(grout > 0){
+        mctx.strokeStyle = '#141311';
+        mctx.globalAlpha = 0.5;
+        mctx.lineWidth = grout;
+        mctx.beginPath();
+        for(let c = 0; c <= cols; c++){
+          const x = Math.round(c * cellW);
+          mctx.moveTo(x, 0); mctx.lineTo(x, h);
+        }
+        for(let r = 0; r <= rows; r++){
+          const y = Math.round(r * cellH);
+          mctx.moveTo(0, y); mctx.lineTo(w, y);
+        }
+        mctx.stroke();
+        mctx.globalAlpha = 1;
+      }
+
+      progress.classList.remove('pe-show');
+    }, 30);
+  }
+
+  function loadMainImage(file){
+    if(!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const img = new Image();
+      img.onload = function(){
+        currentImg = img;
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+
+        originalCanvas.width = w;
+        originalCanvas.height = h;
+        const octx = originalCanvas.getContext('2d');
+        octx.drawImage(img, 0, 0, w, h);
+
+        emptyMsg.style.display = 'none';
+        canvasWrap.classList.add('pe-active');
+        setReveal(50);
+
+        downloadBtn.disabled = false;
+        colsSlider.disabled = false;
+        groutSlider.disabled = false;
+        updateStatus();
+
+        renderPhotomosaic();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  folderBtn.addEventListener('click', function(){ folderInput.click(); });
+  folderInput.addEventListener('change', function(e){ loadFolder(e.target.files); });
+
+  importBtn.addEventListener('click', function(){ fileInput.click(); });
+  fileInput.addEventListener('change', function(e){ loadMainImage(e.target.files[0]); });
+
+  stage.addEventListener('click', function(){
+    if(tilePhotos.length < MIN_PHOTOS){
+      folderInput.click();
+    } else if(!currentImg){
+      fileInput.click();
+    }
+  });
+
+  colsSlider.addEventListener('input', renderPhotomosaic);
+  groutSlider.addEventListener('input', renderPhotomosaic);
+
+  downloadBtn.addEventListener('click', function(){
+    if(!currentImg) return;
+    const link = document.createElement('a');
+    link.download = 'photoeffect-mosaic.png';
+    link.href = mosaicCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  const wrapper = document.querySelector('.photoeffect-mosaic-wrapper');
+  fullscreenBtn.addEventListener('click', function(){
+    if(!document.fullscreenElement){
+      (wrapper.requestFullscreen || wrapper.webkitRequestFullscreen || function(){}).call(wrapper);
+      fullscreenBtn.textContent = 'Exit Fullscreen';
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+      fullscreenBtn.textContent = 'Fullscreen';
+    }
+  });
+  document.addEventListener('fullscreenchange', function(){
+    fullscreenBtn.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Fullscreen';
+  });
+
+  // Auto-resize: report this page's real height to the parent window
+  // so an embedding iframe (e.g. in a Blogger post) can match it exactly,
+  // avoiding an inner scrollbar.
+  function reportHeight(){
+    const h = document.body.scrollHeight;
+    window.parent.postMessage({ photoeffectHeight: h }, '*');
+  }
+  window.addEventListener('load', reportHeight);
+  window.addEventListener('resize', reportHeight);
+  if(window.ResizeObserver){
+    new ResizeObserver(reportHeight).observe(document.body);
+  } else {
+    setInterval(reportHeight, 800);
+  }
+
+  updateStatus();
+})();
+</script>
+</body>
+</html>
