@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhotoEffect.Sketch</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --void:#141311;
+    --panel:#1c1b18;
+    --paper:#eee7d8;
+    --ink:#eee7d8;
+    --muted:#8a8375;
+    --line:#332f28;
+    --safelight:#e0483e;
+    --safelight-dim:#7a2b26;
+  }
+  .photoeffect-app-wrapper, .photoeffect-app-wrapper *{box-sizing:border-box;}
+  .photoeffect-app-wrapper{
+    margin:0;
+    background:var(--void);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  .pe-app{
+    max-width:820px;
+    margin:0 auto;
+    padding:18px 14px 32px;
+  }
+  .pe-head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    border-bottom:2px solid var(--line);
+    padding-bottom:10px;
+    margin-bottom:16px;
+  }
+  .pe-head h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:2px;
+    font-size:clamp(22px,4vw,32px);
+    margin:0;
+  }
+  .pe-head h1 span{color:var(--safelight);}
+  .pe-eyebrow{
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+    text-align:right;
+  }
+
+  .pe-sprocket{
+    display:flex;
+    gap:6px;
+    padding:6px 0;
+    overflow:hidden;
+  }
+  .pe-sprocket div{
+    width:10px;height:14px;
+    background:var(--line);
+    border-radius:2px;
+    flex-shrink:0;
+  }
+
+  .pe-controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    padding:12px 14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    margin-bottom:16px;
+    align-items:center;
+  }
+  .pe-ctrl{display:flex;flex-direction:column;gap:4px;min-width:160px;flex:1;}
+  .pe-ctrl label{
+    font-size:10px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .pe-ctrl input[type=range]{accent-color:var(--safelight);width:100%;}
+
+  .pe-stage-wrap{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:10px;
+  }
+  #peStage{
+    position:relative;
+    width:100%;
+    aspect-ratio:4/3;
+    background:var(--paper);
+    margin:0 auto;
+    overflow:hidden;
+    border-radius:2px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+  }
+  .pe-empty-mark{
+    font-size:11px;
+    color:#9c9376;
+    letter-spacing:1px;
+    text-align:center;
+    pointer-events:none;
+    padding:0 20px;
+  }
+  .pe-empty-mark strong{
+    display:block;
+    font-family:'Oswald',sans-serif;
+    font-size:18px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .pe-canvas-wrap{
+    position:absolute;
+    inset:0;
+    display:none;
+  }
+  .pe-canvas-wrap.pe-active{display:block;}
+  .pe-canvas-wrap canvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+  }
+  #peSketchCanvas{
+    clip-path: inset(0 0 0 var(--reveal, 50%));
+  }
+  .pe-tag{
+    position:absolute;
+    top:4px;
+    font-size:9px;
+    background:rgba(20,19,17,.65);
+    color:var(--ink);
+    padding:2px 5px;
+    border-radius:2px;
+    pointer-events:none;
+    letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  .pe-tag-left{left:4px;}
+  .pe-tag-right{right:4px;}
+  .pe-divider{
+    position:absolute;
+    top:0;
+    bottom:0;
+    left:var(--reveal, 50%);
+    width:2px;
+    background:var(--safelight);
+    transform:translateX(-1px);
+    pointer-events:none;
+  }
+  .pe-handle{
+    position:absolute;
+    top:50%;
+    left:var(--reveal, 50%);
+    transform:translate(-50%,-50%);
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:var(--safelight);
+    border:2px solid var(--paper);
+    cursor:ew-resize;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+  }
+  .pe-handle:before{
+    content:'\2194';
+    color:#1a0f0d;
+    font-size:15px;
+    font-weight:bold;
+  }
+
+  .pe-actions{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+    flex-wrap:wrap;
+  }
+  button.pe-primary, button.pe-ghost{
+    font-family:'Oswald',sans-serif;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    font-weight:600;
+    font-size:13px;
+    padding:12px 22px;
+    border-radius:4px;
+    cursor:pointer;
+    border:1px solid var(--line);
+  }
+  button.pe-primary{
+    background:var(--safelight);
+    color:#1a0f0d;
+    border-color:var(--safelight);
+  }
+  button.pe-primary:hover{background:#ea5c52;}
+  button.pe-ghost{
+    background:transparent;
+    color:var(--ink);
+  }
+  button.pe-ghost:hover{border-color:var(--muted);}
+  button:disabled{opacity:0.4;cursor:not-allowed;}
+  button:focus-visible{outline:2px solid var(--safelight); outline-offset:2px;}
+
+  .pe-hint{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:10px;
+    line-height:1.6;
+  }
+  .photoeffect-app-wrapper input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div class="photoeffect-app-wrapper">
+<div class="pe-app">
+
+  <div class="pe-head">
+    <div>
+      <div class="pe-sprocket">
+        <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+      </div>
+      <h1>PhotoEffect<span>.Sketch</span></h1>
+    </div>
+    <div class="pe-eyebrow">Import &rarr; Sketch &rarr; Export</div>
+  </div>
+
+  <div class="pe-controls">
+    <div class="pe-ctrl">
+      <label>Pencil Softness</label>
+      <input type="range" id="peBlurSlider" min="1" max="15" value="5" disabled>
+    </div>
+  </div>
+
+  <div class="pe-stage-wrap">
+    <div id="peStage">
+      <div class="pe-empty-mark" id="peEmptyMsg">
+        <strong>No photo yet</strong>
+        Click here to import a photo
+      </div>
+
+      <div class="pe-canvas-wrap" id="peCanvasWrap">
+        <canvas id="peOriginalCanvas"></canvas>
+        <canvas id="peSketchCanvas"></canvas>
+        <div class="pe-tag pe-tag-left">Original</div>
+        <div class="pe-tag pe-tag-right">Sketch</div>
+        <div class="pe-divider" id="peDivider"></div>
+        <div class="pe-handle" id="peHandle"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pe-actions">
+    <button class="pe-primary" id="peImportBtn">Import Photo</button>
+    <button class="pe-ghost" id="peDownloadBtn" disabled>Download Sketch</button>
+  </div>
+
+  <p class="pe-hint">Drag the handle on the photo to compare original vs. sketch. Nothing is uploaded &mdash; the effect runs entirely in your browser.</p>
+
+  <input type="file" id="peFileInput" accept="image/*">
+</div>
+</div>
+
+<script>
+(function(){
+  const stage = document.getElementById('peStage');
+  const emptyMsg = document.getElementById('peEmptyMsg');
+  const canvasWrap = document.getElementById('peCanvasWrap');
+  const originalCanvas = document.getElementById('peOriginalCanvas');
+  const sketchCanvas = document.getElementById('peSketchCanvas');
+  const divider = document.getElementById('peDivider');
+  const handle = document.getElementById('peHandle');
+  const importBtn = document.getElementById('peImportBtn');
+  const downloadBtn = document.getElementById('peDownloadBtn');
+  const fileInput = document.getElementById('peFileInput');
+  const blurSlider = document.getElementById('peBlurSlider');
+
+  let currentImg = null;
+
+  function setReveal(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    canvasWrap.style.setProperty('--reveal', pct + '%');
+  }
+
+  function dragStart(e){
+    e.preventDefault();
+    document.addEventListener('mousemove', dragMove);
+    document.addEventListener('mouseup', dragEnd);
+    document.addEventListener('touchmove', dragMove, {passive:false});
+    document.addEventListener('touchend', dragEnd);
+  }
+  function dragMove(e){
+    e.preventDefault();
+    const rect = canvasWrap.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const pct = ((clientX - rect.left) / rect.width) * 100;
+    setReveal(pct);
+  }
+  function dragEnd(){
+    document.removeEventListener('mousemove', dragMove);
+    document.removeEventListener('mouseup', dragEnd);
+    document.removeEventListener('touchmove', dragMove);
+    document.removeEventListener('touchend', dragEnd);
+  }
+  handle.addEventListener('mousedown', dragStart);
+  handle.addEventListener('touchstart', dragStart, {passive:false});
+  divider.addEventListener('mousedown', dragStart);
+
+  function renderSketch(){
+    if(!currentImg) return;
+    const w = currentImg.naturalWidth;
+    const h = currentImg.naturalHeight;
+    const blurRadius = parseInt(blurSlider.value, 10);
+
+    const gray = document.createElement('canvas');
+    gray.width = w; gray.height = h;
+    const gctx = gray.getContext('2d');
+    gctx.filter = 'grayscale(1)';
+    gctx.drawImage(currentImg, 0, 0, w, h);
+
+    const blurred = document.createElement('canvas');
+    blurred.width = w; blurred.height = h;
+    const bctx = blurred.getContext('2d');
+    bctx.filter = 'grayscale(1) invert(1) blur(' + blurRadius + 'px)';
+    bctx.drawImage(currentImg, 0, 0, w, h);
+
+    sketchCanvas.width = w;
+    sketchCanvas.height = h;
+    const sctx = sketchCanvas.getContext('2d');
+    sctx.clearRect(0, 0, w, h);
+    sctx.globalCompositeOperation = 'source-over';
+    sctx.drawImage(gray, 0, 0);
+    sctx.globalCompositeOperation = 'color-dodge';
+    sctx.drawImage(blurred, 0, 0);
+    sctx.globalCompositeOperation = 'source-over';
+  }
+
+  function loadImage(file){
+    if(!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const img = new Image();
+      img.onload = function(){
+        currentImg = img;
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+
+        originalCanvas.width = w;
+        originalCanvas.height = h;
+        const octx = originalCanvas.getContext('2d');
+        octx.drawImage(img, 0, 0, w, h);
+
+        renderSketch();
+
+        emptyMsg.style.display = 'none';
+        canvasWrap.classList.add('pe-active');
+        setReveal(50);
+
+        downloadBtn.disabled = false;
+        blurSlider.disabled = false;
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  importBtn.addEventListener('click', function(){ fileInput.click(); });
+  stage.addEventListener('click', function(){
+    if(!currentImg) fileInput.click();
+  });
+  fileInput.addEventListener('change', function(e){
+    loadImage(e.target.files[0]);
+  });
+
+  stage.addEventListener('dragover', function(e){ e.preventDefault(); });
+  stage.addEventListener('drop', function(e){
+    e.preventDefault();
+    if(e.dataTransfer.files && e.dataTransfer.files[0]){
+      loadImage(e.dataTransfer.files[0]);
+    }
+  });
+
+  blurSlider.addEventListener('input', renderSketch);
+
+  downloadBtn.addEventListener('click', function(){
+    if(!currentImg) return;
+    const link = document.createElement('a');
+    link.download = 'photoeffect-sketch.png';
+    link.href = sketchCanvas.toDataURL('image/png');
+    link.click();
+  });
+})();
+</script>
+</body>
+</html>
