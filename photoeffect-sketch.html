@@ -97,6 +97,7 @@
   #peStage{
     position:relative;
     width:100%;
+    max-width:640px;
     aspect-ratio:4/3;
     background:var(--paper);
     margin:0 auto;
@@ -248,6 +249,12 @@
     </div>
   </div>
 
+  <div class="pe-actions">
+    <button class="pe-primary" id="peImportBtn">Import Photo</button>
+    <button class="pe-ghost" id="peDownloadBtn" disabled>Download Sketch</button>
+    <button class="pe-ghost" id="peFullscreenBtn">Fullscreen</button>
+  </div>
+
   <div class="pe-stage-wrap">
     <div id="peStage">
       <div class="pe-empty-mark" id="peEmptyMsg">
@@ -264,12 +271,6 @@
         <div class="pe-handle" id="peHandle"></div>
       </div>
     </div>
-  </div>
-
-  <div class="pe-actions">
-    <button class="pe-primary" id="peImportBtn">Import Photo</button>
-    <button class="pe-ghost" id="peDownloadBtn" disabled>Download Sketch</button>
-    <button class="pe-ghost" id="peFullscreenBtn">Fullscreen</button>
   </div>
 
   <p class="pe-hint">Drag the handle on the photo to compare original vs. sketch. Nothing is uploaded &mdash; the effect runs entirely in your browser.</p>
