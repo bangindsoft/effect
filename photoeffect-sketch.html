@@ -269,6 +269,7 @@
   <div class="pe-actions">
     <button class="pe-primary" id="peImportBtn">Import Photo</button>
     <button class="pe-ghost" id="peDownloadBtn" disabled>Download Sketch</button>
+    <button class="pe-ghost" id="peFullscreenBtn">Fullscreen</button>
   </div>
 
   <p class="pe-hint">Drag the handle on the photo to compare original vs. sketch. Nothing is uploaded &mdash; the effect runs entirely in your browser.</p>
@@ -405,6 +406,36 @@
     link.href = sketchCanvas.toDataURL('image/png');
     link.click();
   });
+
+  const fullscreenBtn = document.getElementById('peFullscreenBtn');
+  const wrapper = document.querySelector('.photoeffect-app-wrapper');
+  fullscreenBtn.addEventListener('click', function(){
+    if(!document.fullscreenElement){
+      (wrapper.requestFullscreen || wrapper.webkitRequestFullscreen || function(){}).call(wrapper);
+      fullscreenBtn.textContent = 'Exit Fullscreen';
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+      fullscreenBtn.textContent = 'Fullscreen';
+    }
+  });
+  document.addEventListener('fullscreenchange', function(){
+    fullscreenBtn.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Fullscreen';
+  });
+
+  // Auto-resize: report this page's real height to the parent window
+  // so an embedding iframe (e.g. in a Blogger post) can match it exactly,
+  // avoiding an inner scrollbar.
+  function reportHeight(){
+    const h = document.body.scrollHeight;
+    window.parent.postMessage({ photoeffectHeight: h }, '*');
+  }
+  window.addEventListener('load', reportHeight);
+  window.addEventListener('resize', reportHeight);
+  if(window.ResizeObserver){
+    new ResizeObserver(reportHeight).observe(document.body);
+  } else {
+    setInterval(reportHeight, 800);
+  }
 })();
 </script>
 </body>
