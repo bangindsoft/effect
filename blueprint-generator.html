@@ -98,6 +98,10 @@
       border: 1px dashed var(--border);
       border-radius: 6px;
       padding: 4px;
+      cursor: default; /* Akan berubah jadi grab saat ada gambar */
+      /* Hindari text selection saat geser gambar */
+      user-select: none; 
+      -webkit-user-select: none;
     }
 
     canvas {
@@ -109,6 +113,15 @@
       margin: 0 auto;
       border-radius: 4px;
       object-fit: contain;
+      /* Transisi halus saat zoom */
+      transition: transform 0.1s ease-out; 
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
     }
 
     .btn-download {
@@ -121,7 +134,6 @@
       cursor: pointer;
       font-size: 12px;
       transition: all 0.2s ease;
-      margin-top: 8px;
     }
 
     .btn-download:hover {
@@ -129,10 +141,16 @@
       color: #fff;
     }
 
+    .hint-text {
+      font-size: 11px;
+      color: #cbd5e1;
+      text-align: left;
+    }
+
     .privacy-note {
       font-size: 10px;
       color: var(--text-muted);
-      margin-top: 6px;
+      margin-top: 8px;
       margin-bottom: 0;
     }
   </style>
@@ -170,11 +188,17 @@
       </div>
     </div>
 
-    <div class="canvas-container">
+    <div class="canvas-container" id="canvas-container">
       <canvas id="bp-canvas"></canvas>
     </div>
 
-    <button id="bp-download-btn" class="btn-download">Save Result (PNG)</button>
+    <div class="footer-actions">
+      <div class="hint-text">
+        💡 <b>Tips:</b> Scroll to Zoom | Click & Drag to Move | Dbl-Click to Reset
+      </div>
+      <button id="bp-download-btn" class="btn-download">Save Result (PNG)</button>
+    </div>
+    
     <p class="privacy-note">🔒 Privacy Protected: All processing happens locally on your device.</p>
   </div>
 </div>
@@ -186,11 +210,82 @@
   const bgColorInput = document.getElementById('bp-bg-color');
   const gridToggle = document.getElementById('bp-grid-toggle');
   const canvas = document.getElementById('bp-canvas');
+  const container = document.getElementById('canvas-container');
   const ctx = canvas.getContext('2d');
   const downloadBtn = document.getElementById('bp-download-btn');
 
   let currentImg = null;
 
+  // Variabel untuk fitur Zoom & Pan
+  let zoomLevel = 1;
+  let isDragging = false;
+  let startX, startY;
+  let translateX = 0, translateY = 0;
+
+  // Fungsi Reset Posisi dan Zoom
+  function resetZoomPan() {
+    zoomLevel = 1;
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
+  }
+
+  // Fungsi Terapkan CSS Transform ke Canvas
+  function updateTransform() {
+    canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
+  }
+
+  // --- EVENT LISTENER UNTUK ZOOM (SCROLL MOUSE) ---
+  container.addEventListener('wheel', function(e) {
+    if (!currentImg) return;
+    e.preventDefault(); // Mencegah halaman ikut ter-scroll
+    
+    const zoomStep = 0.15; // Kecepatan zoom
+    if (e.deltaY < 0) {
+      zoomLevel += zoomStep; // Scroll ke atas = Zoom In
+    } else {
+      zoomLevel -= zoomStep; // Scroll ke bawah = Zoom Out
+    }
+    
+    // Batasi zoom (Minimal 0.5x, Maksimal 6x)
+    zoomLevel = Math.max(0.5, Math.min(zoomLevel, 6));
+    updateTransform();
+  }, { passive: false });
+
+  // --- EVENT LISTENER UNTUK PAN (KLIK & GESER) ---
+  container.addEventListener('mousedown', (e) => {
+    if (!currentImg) return;
+    isDragging = true;
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+    container.style.cursor = 'grabbing';
+  });
+
+  container.addEventListener('mouseup', () => {
+    isDragging = false;
+    container.style.cursor = currentImg ? 'grab' : 'default';
+  });
+
+  container.addEventListener('mouseleave', () => {
+    isDragging = false;
+    container.style.cursor = currentImg ? 'grab' : 'default';
+  });
+
+  container.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    translateX = e.clientX - startX;
+    translateY = e.clientY - startY;
+    updateTransform();
+  });
+
+  // Reset view saat user double-click di area gambar
+  container.addEventListener('dblclick', () => {
+    if (currentImg) resetZoomPan();
+  });
+
+
+  // --- LOGIKA BLUEPRINT (Sama seperti sebelumnya) ---
   function initPlaceholder() {
     canvas.width = 600;
     canvas.height = 300;
@@ -280,6 +375,8 @@
       const img = new Image();
       img.onload = () => {
         currentImg = img;
+        container.style.cursor = 'grab'; // Ubah kursor jadi ikon tangan
+        resetZoomPan(); // Reset zoom setiap kali upload foto baru
         processImage();
       };
       img.src = event.target.result;
@@ -296,6 +393,7 @@
       alert('Please upload an image first.');
       return;
     }
+    // Karena zoom pakai CSS, gambar yang didownload tetap sesuai resolusi aslinya (tidak ikut terpotong)
     const link = document.createElement('a');
     link.download = 'blueprint-effect.png';
     link.href = canvas.toDataURL('image/png');
