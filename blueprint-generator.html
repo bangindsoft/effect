@@ -90,33 +90,35 @@
       margin-top: 6px;
     }
 
-    .canvas-container {
+.canvas-container {
       position: relative;
       overflow: hidden;
       max-height: 320px;
-      background: #020617;
+      /* Background statis dihapus, akan diatur dinamis lewat JS */
       border: 1px dashed var(--border);
       border-radius: 6px;
-      padding: 4px;
-      cursor: default; /* Akan berubah jadi grab saat ada gambar */
-      /* Hindari text selection saat geser gambar */
+      /* Padding dihapus agar gambar tidak ada celah di pinggir */
+      padding: 0; 
+      cursor: default;
       user-select: none; 
       -webkit-user-select: none;
     }
 
     canvas {
       max-width: 100%;
-      max-height: 310px;
+      max-height: 320px;
       width: auto;
       height: auto;
       display: block;
       margin: 0 auto;
-      border-radius: 4px;
       object-fit: contain;
-      /* Transisi halus saat zoom */
       transition: transform 0.1s ease-out; 
+      /* 3 Baris ini adalah KUNCI anti-artifak & ghosting */
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transform-origin: center center;
     }
-
     .footer-actions {
       display: flex;
       justify-content: space-between;
