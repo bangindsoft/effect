@@ -288,9 +288,12 @@
 
 
   // --- LOGIKA BLUEPRINT (Sama seperti sebelumnya) ---
-  function initPlaceholder() {
+function initPlaceholder() {
     canvas.width = 600;
     canvas.height = 300;
+    // Samakan background container dengan warna blueprint
+    container.style.backgroundColor = bgColorInput.value; 
+    
     ctx.fillStyle = bgColorInput.value;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawGrid();
@@ -299,7 +302,7 @@
     ctx.textAlign = 'center';
     ctx.fillText('Upload an image to render blueprint effect', canvas.width / 2, canvas.height / 2);
   }
-
+  
   function drawGrid() {
     if (!gridToggle.checked) return;
     const size = 20;
@@ -313,8 +316,11 @@
     }
   }
 
-  function processImage() {
+function processImage() {
     if (!currentImg) return;
+
+    // Samakan background container dengan warna blueprint yang dipilih
+    container.style.backgroundColor = bgColorInput.value;
 
     const maxDim = 1200;
     let w = currentImg.width;
@@ -324,6 +330,8 @@
       else { w = Math.round((w * maxDim) / h); h = maxDim; }
     }
 
+    /* ... (sisa kode di dalam processImage tetap sama persis seperti sebelumnya) ... */
+    
     canvas.width = w;
     canvas.height = h;
 
@@ -368,7 +376,7 @@
     ctx.putImageData(imgData, 0, 0);
     drawGrid();
   }
-
+  
   fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
