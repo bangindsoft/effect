@@ -1,0 +1,180 @@
+<!-- Blueprint Converter Tool for Blogspot -->
+<div id="blueprint-tool-container" style="max-width: 700px; margin: 20px auto; padding: 20px; background: #0f172a; color: #f8fafc; border-radius: 12px; font-family: sans-serif; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center;">
+  
+  <h3 style="margin-top: 0; color: #38bdf8;">Blueprint Photo Generator</h3>
+  <p style="font-size: 14px; color: #94a3b8; margin-bottom: 20px;">Ubah foto gedung, kendaraan, atau objek menjadi sketsa blueprint teknis secara instan.</p>
+
+  <!-- Control Panel -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: #1e293b; padding: 15px; border-radius: 8px; text-align: left; margin-bottom: 20px;">
+    <div>
+      <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 5px;">1. Pilih Foto:</label>
+      <input type="file" id="bp-file-input" accept="image/*" style="font-size: 12px; color: #cbd5e1; width: 100%;">
+    </div>
+    
+    <div>
+      <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 5px;">2. Detail Garis:</label>
+      <input type="range" id="bp-threshold" min="10" max="100" value="35" style="width: 100%;">
+    </div>
+
+    <div>
+      <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 5px;">3. Warna Background:</label>
+      <select id="bp-bg-color" style="width: 100%; padding: 6px; border-radius: 4px; background: #0f172a; color: #fff; border: 1px solid #334155;">
+        <option value="#002b49">Classic Blue (#002b49)</option>
+        <option value="#001a33">Dark Navy (#001a33)</option>
+        <option value="#0d3b66">Royal Blue (#0d3b66)</option>
+      </select>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; margin-top: 15px;">
+      <input type="checkbox" id="bp-grid-toggle" checked>
+      <label for="bp-grid-toggle" style="font-size: 12px;">Tampilkan Garis Kotak (Grid)</label>
+    </div>
+  </div>
+
+  <!-- Canvas Container -->
+  <div style="position: relative; overflow: auto; max-height: 500px; background: #020617; border: 1px dashed #334155; border-radius: 8px; padding: 10px;">
+    <canvas id="bp-canvas" style="max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 4px;"></canvas>
+  </div>
+
+  <!-- Action Button -->
+  <div style="margin-top: 20px;">
+    <button id="bp-download-btn" style="background: #0284c7; color: #ffffff; border: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='#0369a1'" onmouseout="this.style.background='#0284c7'">
+      Simpan Hasil (PNG)
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+  const fileInput = document.getElementById('bp-file-input');
+  const thresholdInput = document.getElementById('bp-threshold');
+  const bgColorInput = document.getElementById('bp-bg-color');
+  const gridToggle = document.getElementById('bp-grid-toggle');
+  const canvas = document.getElementById('bp-canvas');
+  const ctx = canvas.getContext('2d');
+  const downloadBtn = document.getElementById('bp-download-btn');
+
+  let currentImg = null;
+
+  // Placeholder awal saat tool baru dimuat
+  function initPlaceholder() {
+    canvas.width = 600;
+    canvas.height = 300;
+    ctx.fillStyle = bgColorInput.value;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawGrid();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Unggah foto untuk melihat efek blueprint', canvas.width / 2, canvas.height / 2);
+  }
+
+  function drawGrid() {
+    if (!gridToggle.checked) return;
+    const size = 20;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += size) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += size) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+  }
+
+  function processImage() {
+    if (!currentImg) return;
+
+    // Set canvas dimension
+    const maxDim = 1200; // batasi max resolusi agar cepat
+    let w = currentImg.width;
+    let h = currentImg.height;
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+
+    // Draw original image
+    ctx.drawImage(currentImg, 0, 0, w, h);
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    // Grayscale
+    const gray = new Float32Array(w * h);
+    for (let i = 0; i < data.length; i += 4) {
+      gray[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    }
+
+    // Hex background conversion
+    const bgHex = bgColorInput.value;
+    const bgR = parseInt(bgHex.slice(1, 3), 16);
+    const bgG = parseInt(bgHex.slice(3, 5), 16);
+    const bgB = parseInt(bgHex.slice(5, 7), 16);
+
+    const threshold = parseFloat(thresholdInput.value);
+
+    // Sobel Edge Detection
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = y * w + x;
+        
+        const gx = -gray[idx - w - 1] + gray[idx - w + 1]
+                   - 2 * gray[idx - 1] + 2 * gray[idx + 1]
+                   - gray[idx + w - 1] + gray[idx + w + 1];
+
+        const gy = -gray[idx - w - 1] - 2 * gray[idx - w] - gray[idx - w + 1]
+                   + gray[idx + w - 1] + 2 * gray[idx + w] + gray[idx + w + 1];
+
+        let edge = Math.sqrt(gx * gx + gy * gy);
+        edge = edge < threshold ? 0 : Math.min(255, edge * 2);
+
+        const pIdx = idx * 4;
+        const factor = edge / 255;
+
+        data[pIdx]     = bgR + (255 - bgR) * factor;
+        data[pIdx + 1] = bgG + (255 - bgG) * factor;
+        data[pIdx + 2] = bgB + (255 - bgB) * factor;
+        data[pIdx + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    drawGrid();
+  }
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        currentImg = img;
+        processImage();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  thresholdInput.addEventListener('input', processImage);
+  bgColorInput.addEventListener('change', processImage);
+  gridToggle.addEventListener('change', processImage);
+
+  downloadBtn.addEventListener('click', () => {
+    if (!currentImg) {
+      alert('Silakan unggah foto terlebih dahulu.');
+      return;
+    }
+    const link = document.createElement('a');
+    link.download = 'blueprint-effect.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  initPlaceholder();
+})();
+</script>
