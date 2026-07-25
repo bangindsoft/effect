@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Border Maker</title>
+  <style>
+    :root {
+      --bg-main: #0b1329;
+      --bg-card: #1e293b;
+      --accent: #a855f7; /* Warna violet agar beda dari aplikasi lain */
+      --accent-hover: #9333ea;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 8px;
+    }
+
+    .tool-box {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+
+    .tool-title {
+      margin: 0 0 2px 0;
+      color: var(--accent);
+      font-size: 1.2rem;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 6px;
+      text-align: left;
+      margin: 8px 0;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .control-group input[type="file"],
+    .control-group input[type="range"],
+    .control-group input[type="color"] {
+      width: 100%;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 4px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    
+    /* Khusus untuk color picker biar lebih rapi */
+    .control-group input[type="color"] {
+      padding: 1px 2px;
+      height: 25px;
+      cursor: pointer;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 20px; /* Sejajarkan dengan input lain */
+    }
+
+    .canvas-container {
+      position: relative;
+      overflow: hidden;
+      max-height: 350px;
+      background: #020617;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0;
+      cursor: default;
+      user-select: none; 
+      -webkit-user-select: none;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 350px;
+      width: auto;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+      transition: transform 0.1s ease-out; 
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transform-origin: center center;
+      /* Tambahan shadow sedikit agar bingkai terlihat menonjol di preview */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); 
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover {
+      background: var(--accent-hover);
+    }
+
+    .hint-text {
+      font-size: 11px;
+      color: #cbd5e1;
+      text-align: left;
+    }
+
+    .privacy-note {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 12px;
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Instant Photo Border Maker</h2>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Add beautiful custom borders and polaroid frames to your photos.</p>
+
+    <div class="controls-grid">
+      <div class="control-group">
+        <label>1. Select Photo</label>
+        <input type="file" id="bd-file-input" accept="image/*">
+      </div>
+      
+      <div class="control-group">
+        <label>
+          <span>2. Border Size</span>
+          <span id="size-val">5%</span>
+        </label>
+        <input type="range" id="bd-size" min="1" max="25" value="5">
+      </div>
+
+      <div class="control-group">
+        <label>3. Border Color</label>
+        <input type="color" id="bd-color" value="#ffffff">
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" id="bd-polaroid">
+        <label for="bd-polaroid" style="margin:0; font-size: 11px; text-transform: none;">Polaroid Style</label>
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="bd-canvas"></canvas>
+    </div>
+
+    <div class="footer-actions">
+      <div class="hint-text">
+        💡 <b>Tips:</b> Scroll to Zoom | Click & Drag to Move | Dbl-Click to Reset
+      </div>
+      <button id="bd-download-btn" class="btn-download">Save Result (PNG)</button>
+    </div>
+    
+    <p class="privacy-note">🔒 Privacy Protected: All processing happens locally on your device.</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  const fileInput = document.getElementById('bd-file-input');
+  const sizeInput = document.getElementById('bd-size');
+  const sizeValText = document.getElementById('size-val');
+  const colorInput = document.getElementById('bd-color');
+  const polaroidToggle = document.getElementById('bd-polaroid');
+  const canvas = document.getElementById('bd-canvas');
+  const container = document.getElementById('canvas-container');
+  const ctx = canvas.getContext('2d');
+  const downloadBtn = document.getElementById('bd-download-btn');
+
+  let currentImg = null;
+
+  // Variabel untuk Zoom & Pan
+  let zoomLevel = 1;
+  let isDragging = false;
+  let startX, startY;
+  let translateX = 0, translateY = 0;
+
+  function resetZoomPan() {
+    zoomLevel = 1;
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
+  }
+
+  function updateTransform() {
+    canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
+  }
+
+  // Event Listener Zoom
+  container.addEventListener('wheel', function(e) {
+    if (!currentImg) return;
+    e.preventDefault();
+    const zoomStep = 0.15;
+    if (e.deltaY < 0) zoomLevel += zoomStep; 
+    else zoomLevel -= zoomStep; 
+    zoomLevel = Math.max(0.5, Math.min(zoomLevel, 6));
+    updateTransform();
+  }, { passive: false });
+
+  // Event Listener Pan
+  container.addEventListener('mousedown', (e) => {
+    if (!currentImg) return;
+    isDragging = true;
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+    container.style.cursor = 'grabbing';
+  });
+
+  container.addEventListener('mouseup', () => {
+    isDragging = false;
+    container.style.cursor = currentImg ? 'grab' : 'default';
+  });
+
+  container.addEventListener('mouseleave', () => {
+    isDragging = false;
+    container.style.cursor = currentImg ? 'grab' : 'default';
+  });
+
+  container.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    translateX = e.clientX - startX;
+    translateY = e.clientY - startY;
+    updateTransform();
+  });
+
+  container.addEventListener('dblclick', () => {
+    if (currentImg) resetZoomPan();
+  });
+
+  function initPlaceholder() {
+    canvas.width = 600;
+    canvas.height = 300;
+    container.style.backgroundColor = '#0f172a';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#64748b';
+    ctx.font = '15px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Upload an image to create photo borders', canvas.width / 2, canvas.height / 2);
+  }
+
+  function processImage() {
+    if (!currentImg) return;
+
+    sizeValText.textContent = sizeInput.value + '%';
+
+    const maxDim = 1200; 
+    let w = currentImg.width;
+    let h = currentImg.height;
+    
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
+
+    // Kalkulasi ukuran border berdasarkan persen dari lebar gambar
+    const borderPct = parseFloat(sizeInput.value) / 100;
+    const borderPx = Math.round(w * borderPct);
+    
+    // Logika Polaroid: Jika dicentang, border bawah 3.5x lebih tebal
+    const bottomBorderPx = polaroidToggle.checked ? Math.round(borderPx * 3.5) : borderPx;
+
+    // Set ukuran canvas baru (Gambar Asli + Total Border)
+    canvas.width = w + (borderPx * 2);
+    canvas.height = h + borderPx + bottomBorderPx;
+
+    // 1. Gambar latar belakang (sebagai border)
+    ctx.fillStyle = colorInput.value;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. Tempelkan gambar asli di tengah-tengah border
+    ctx.drawImage(currentImg, borderPx, borderPx, w, h);
+  }
+
+  // Trigger saat file diupload
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        currentImg = img;
+        container.style.cursor = 'grab';
+        resetZoomPan();
+        processImage();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Trigger saat kontrol diubah
+  sizeInput.addEventListener('input', processImage);
+  colorInput.addEventListener('input', processImage);
+  polaroidToggle.addEventListener('change', processImage);
+
+  // Trigger download
+  downloadBtn.addEventListener('click', () => {
+    if (!currentImg) {
+      alert('Please upload an image first.');
+      return;
+    }
+    const link = document.createElement('a');
+    link.download = 'bordered-photo.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  initPlaceholder();
+})();
+</script>
+
+</body>
+</html>
