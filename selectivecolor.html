@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Selective Coloring Pro</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #0ea5e9; /* Ocean Blue */
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 8px;
+    }
+
+    .tool-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+
+    .tool-title {
+      margin: 0 0 2px 0;
+      color: var(--accent);
+      font-size: 1.2rem;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 6px;
+      text-align: left;
+      margin: 8px 0;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .control-group input[type="file"],
+    .control-group input[type="range"],
+    .control-group select {
+      width: 100%;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 5px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .color-picker-wrapper {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .color-picker-wrapper input[type="color"] {
+      width: 40px;
+      height: 26px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      padding: 0;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+
+    @media (max-width: 500px) {
+      .span-2, .span-3 { grid-column: span 1; }
+    }
+
+    .canvas-container {
+      position: relative;
+      overflow: hidden;
+      max-height: 330px;
+      background: 
+        repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 
+        50% / 20px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0;
+      cursor: default;
+      user-select: none; 
+      -webkit-user-select: none;
+      margin-top: 10px;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 330px;
+      width: auto;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+      transition: transform 0.1s ease-out; 
+      transform-origin: center center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); 
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover { background: var(--accent-hover); }
+
+    .hint-text { font-size: 11px; color: #cbd5e1; text-align: left; }
+    .privacy-note { font-size: 10px; color: var(--text-muted); margin-top: 12px; margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Selective Coloring Pro</h2>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Isolate a specific color while turning the rest of the photo black & white.</p>
+
+    <div class="controls-grid">
+      <!-- MAIN UPLOAD -->
+      <div class="control-group span-2">
+        <label>1. Upload Photo</label>
+        <input type="file" id="sc-base-file" accept="image/*">
+      </div>
+      
+      <div class="control-group">
+        <label>2. Target Color to Keep</label>
+        <div class="color-picker-wrapper">
+          <input type="color" id="sc-target-color" value="#ff0000">
+          <select id="sc-preset-color" style="flex:1;">
+            <option value="custom">Custom Color</option>
+            <option value="#ff0000" selected>Red</option>
+            <option value="#00ff00">Green</option>
+            <option value="#0000ff">Blue</option>
+            <option value="#ffff00">Yellow</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- SLIDERS -->
+      <div class="control-group">
+        <label><span>Color Tolerance</span> <span id="val-tolerance">35</span></label>
+        <input type="range" id="sc-tolerance" min="5" max="100" value="35">
+      </div>
+
+      <div class="control-group">
+        <label><span>Background B&W Level</span> <span id="val-bw">100%</span></label>
+        <input type="range" id="sc-bw-level" min="0" max="100" value="100">
+      </div>
+
+      <div class="control-group">
+        <label><span>Invert Isolation</span></label>
+        <select id="sc-invert">
+          <option value="false" selected>Keep Target Color</option>
+          <option value="true">Make Target Color B&W</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="sc-canvas"></canvas>
+    </div>
+
+    <div class="footer-actions">
+      <div class="hint-text">
+        💡 <b>Tips:</b> Scroll to Zoom Canvas | Click & Drag to Move | Dbl-Click to Reset View
+      </div>
+      <button id="sc-download-btn" class="btn-download">Save Photo (JPEG)</button>
+    </div>
+    
+    <p class="privacy-note">🔒 Privacy Protected: Your photos never leave your device.</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  const baseFileInput = document.getElementById('sc-base-file');
+  const targetColorInput = document.getElementById('sc-target-color');
+  const presetColorSelect = document.getElementById('sc-preset-color');
+  const toleranceInput = document.getElementById('sc-tolerance');
+  const bwLevelInput = document.getElementById('sc-bw-level');
+  const invertSelect = document.getElementById('sc-invert');
+  
+  const valTolerance = document.getElementById('val-tolerance');
+  const valBw = document.getElementById('val-bw');
+
+  const canvas = document.getElementById('sc-canvas');
+  const container = document.getElementById('canvas-container');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const downloadBtn = document.getElementById('sc-download-btn');
+
+  let currentBaseImg = null;
+  let processingId = null;
+
+  // Zoom & Pan Mechanics
+  let zoomLevel = 1; let isDragging = false;
+  let startX, startY; let translateX = 0, translateY = 0;
+
+  function resetZoomPan() { zoomLevel = 1; translateX = 0; translateY = 0; updateTransform(); }
+  function updateTransform() { canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`; }
+
+  container.addEventListener('wheel', (e) => {
+    if (!currentBaseImg) return;
+    e.preventDefault();
+    zoomLevel += e.deltaY < 0 ? 0.15 : -0.15;
+    zoomLevel = Math.max(0.5, Math.min(zoomLevel, 6));
+    updateTransform();
+  }, { passive: false });
+
+  container.addEventListener('mousedown', (e) => {
+    if (!currentBaseImg) return;
+    isDragging = true;
+    startX = e.clientX - translateX; startY = e.clientY - translateY;
+    container.style.cursor = 'grabbing';
+  });
+  container.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
+  container.addEventListener('mouseleave', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
+  container.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    translateX = e.clientX - startX; translateY = e.clientY - startY;
+    updateTransform();
+  });
+  container.addEventListener('dblclick', () => { if (currentBaseImg) resetZoomPan(); });
+
+  function initPlaceholder() {
+    canvas.width = 600; canvas.height = 300;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#64748b'; ctx.font = '15px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Upload a photo for Selective Coloring', canvas.width / 2, canvas.height / 2);
+  }
+
+  // Convert Hex to RGB helper
+  function hexToRgb(hex) {
+    const bigint = parseInt(hex.replace('#', ''), 16);
+    return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+  }
+
+  function processImage() {
+    if (!currentBaseImg) return;
+
+    valTolerance.textContent = toleranceInput.value;
+    valBw.textContent = bwLevelInput.value + '%';
+
+    const maxDim = 900; 
+    let w = currentBaseImg.width;
+    let h = currentBaseImg.height;
+    
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
+
+    canvas.width = w; canvas.height = h;
+    ctx.drawImage(currentBaseImg, 0, 0, w, h);
+    
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const pixels = imgData.data;
+
+    const targetHex = targetColorInput.value;
+    const targetRgb = hexToRgb(targetHex);
+    const tolerance = parseInt(toleranceInput.value);
+    const bwFactor = parseInt(bwLevelInput.value) / 100;
+    const isInverted = invertSelect.value === 'true';
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      const r = pixels[i];
+      const g = pixels[i + 1];
+      const b = pixels[i + 2];
+
+      // Hitung jarak warna Euclidean di ruang RGB
+      const distance = Math.sqrt(
+        Math.pow(r - targetRgb.r, 2) +
+        Math.pow(g - targetRgb.g, 2) +
+        Math.pow(b - targetRgb.b, 2)
+      );
+
+      // Standar luminance konversi hitam putih (grayscale)
+      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+      let keepColor = distance <= (tolerance * 3.5); // Skala toleransi 3.5 menyesuaikan radius RGB (max ~440)
+      if (isInverted) keepColor = !keepColor;
+
+      if (!keepColor) {
+        // Terapkan efek hitam putih sesuai persentase bwLevel
+        pixels[i]     = r * (1 - bwFactor) + gray * bwFactor;
+        pixels[i + 1] = g * (1 - bwFactor) + gray * bwFactor;
+        pixels[i + 2] = b * (1 - bwFactor) + gray * bwFactor;
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  baseFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        currentBaseImg = img;
+        container.style.cursor = 'grab';
+        resetZoomPan();
+        processImage();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  presetColorSelect.addEventListener('change', (e) => {
+    if (e.target.value !== 'custom') {
+      targetColorInput.value = e.target.value;
+      processImage();
+    }
+  });
+
+  targetColorInput.addEventListener('input', () => {
+    presetColorSelect.value = 'custom';
+    processImage();
+  });
+
+  [toleranceInput, bwLevelInput, invertSelect].forEach(element => {
+    element.addEventListener('input', () => {
+      clearTimeout(processingId);
+      processingId = setTimeout(processImage, 50);
+    });
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!currentBaseImg) { alert('Please upload a photo first!'); return; }
+    const link = document.createElement('a');
+    link.download = 'selective-color-photo.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.9);
+    link.click();
+  });
+
+  initPlaceholder();
+})();
+</script>
+
+</body>
+</html>
