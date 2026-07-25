@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Photo Border Maker</title>
+  <title>Photo Border Maker Pro</title>
   <style>
     :root {
       --bg-main: #0b1329;
       --bg-card: #1e293b;
-      --accent: #a855f7; /* Warna violet agar beda dari aplikasi lain */
+      --accent: #a855f7;
       --accent-hover: #9333ea;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
@@ -74,34 +74,49 @@
 
     .control-group input[type="file"],
     .control-group input[type="range"],
-    .control-group input[type="color"] {
+    .control-group input[type="color"],
+    .control-group input[type="text"] {
       width: 100%;
       background: #0f172a;
       color: #fff;
       border: 1px solid var(--border);
-      padding: 4px;
+      padding: 5px;
       border-radius: 4px;
       font-size: 11px;
     }
     
-    /* Khusus untuk color picker biar lebih rapi */
     .control-group input[type="color"] {
       padding: 1px 2px;
-      height: 25px;
+      height: 26px;
       cursor: pointer;
+    }
+
+    /* Bikin input watermark sedikit lebih lebar di grid */
+    .span-2 {
+      grid-column: span 2;
+    }
+
+    @media (max-width: 500px) {
+      .span-2 { grid-column: span 1; }
     }
 
     .checkbox-group {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 20px; /* Sejajarkan dengan input lain */
+      gap: 12px;
+      margin-top: 18px; 
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .canvas-container {
       position: relative;
       overflow: hidden;
-      max-height: 350px;
+      max-height: 330px;
       background: #020617;
       border: 1px dashed var(--border);
       border-radius: 6px;
@@ -113,7 +128,7 @@
 
     canvas {
       max-width: 100%;
-      max-height: 350px;
+      max-height: 330px;
       width: auto;
       height: auto;
       display: block;
@@ -124,7 +139,6 @@
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
       transform-origin: center center;
-      /* Tambahan shadow sedikit agar bingkai terlihat menonjol di preview */
       box-shadow: 0 4px 12px rgba(0,0,0,0.5); 
     }
 
@@ -169,8 +183,8 @@
 
 <div class="container">
   <div class="tool-box">
-    <h2 class="tool-title">Instant Photo Border Maker</h2>
-    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Add beautiful custom borders and polaroid frames to your photos.</p>
+    <h2 class="tool-title">Vintage Border & Watermark</h2>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Add custom borders, vintage noise splatter, and text watermark.</p>
 
     <div class="controls-grid">
       <div class="control-group">
@@ -187,13 +201,24 @@
       </div>
 
       <div class="control-group">
-        <label>3. Border Color</label>
+        <label>3. Color</label>
         <input type="color" id="bd-color" value="#ffffff">
       </div>
 
+      <div class="control-group span-2">
+        <label>4. Watermark Text</label>
+        <input type="text" id="bd-watermark" placeholder="e.g., Bali 2026 / By Mas Bro">
+      </div>
+
       <div class="checkbox-group">
-        <input type="checkbox" id="bd-polaroid">
-        <label for="bd-polaroid" style="margin:0; font-size: 11px; text-transform: none;">Polaroid Style</label>
+        <div class="checkbox-item">
+          <input type="checkbox" id="bd-polaroid">
+          <label for="bd-polaroid" style="margin:0; font-size: 11px; text-transform: none;">Polaroid</label>
+        </div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="bd-splatter">
+          <label for="bd-splatter" style="margin:0; font-size: 11px; text-transform: none;">Noise Splatter</label>
+        </div>
       </div>
     </div>
 
@@ -218,7 +243,9 @@
   const sizeInput = document.getElementById('bd-size');
   const sizeValText = document.getElementById('size-val');
   const colorInput = document.getElementById('bd-color');
+  const watermarkInput = document.getElementById('bd-watermark');
   const polaroidToggle = document.getElementById('bd-polaroid');
+  const splatterToggle = document.getElementById('bd-splatter');
   const canvas = document.getElementById('bd-canvas');
   const container = document.getElementById('canvas-container');
   const ctx = canvas.getContext('2d');
@@ -243,7 +270,6 @@
     canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
   }
 
-  // Event Listener Zoom
   container.addEventListener('wheel', function(e) {
     if (!currentImg) return;
     e.preventDefault();
@@ -254,7 +280,6 @@
     updateTransform();
   }, { passive: false });
 
-  // Event Listener Pan
   container.addEventListener('mousedown', (e) => {
     if (!currentImg) return;
     isDragging = true;
@@ -311,26 +336,75 @@
       else { w = Math.round((w * maxDim) / h); h = maxDim; }
     }
 
-    // Kalkulasi ukuran border berdasarkan persen dari lebar gambar
     const borderPct = parseFloat(sizeInput.value) / 100;
     const borderPx = Math.round(w * borderPct);
     
-    // Logika Polaroid: Jika dicentang, border bawah 3.5x lebih tebal
-    const bottomBorderPx = polaroidToggle.checked ? Math.round(borderPx * 3.5) : borderPx;
+    // Bottom border lebih tebal kalau Polaroid dicentang
+    const bottomBorderPx = polaroidToggle.checked ? Math.round(borderPx * 3.8) : borderPx;
 
-    // Set ukuran canvas baru (Gambar Asli + Total Border)
     canvas.width = w + (borderPx * 2);
     canvas.height = h + borderPx + bottomBorderPx;
 
-    // 1. Gambar latar belakang (sebagai border)
+    // 1. Gambar Background (Border)
     ctx.fillStyle = colorInput.value;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Tempelkan gambar asli di tengah-tengah border
+    // 2. Tempelkan Gambar Asli
     ctx.drawImage(currentImg, borderPx, borderPx, w, h);
+
+    // 3. Efek Noise Splatter (Percikan titik-titik random)
+    if (splatterToggle.checked) {
+      // Tingkat kepadatan titik (makin besar makin kotor)
+      const splatterCount = Math.floor((canvas.width * canvas.height) / 450); 
+      for (let i = 0; i < splatterCount; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        // Radius titik acak 0.5px sampai 2px
+        const radius = Math.random() * 2;
+        
+        // Pilih acak warna terang atau gelap semi transparan
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)';
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 4. Efek Watermark Text
+    const wmText = watermarkInput.value.trim();
+    if (wmText) {
+      // Hitung luminance (kecerahan) dari warna border
+      const bgHex = colorInput.value;
+      const r = parseInt(bgHex.slice(1,3), 16);
+      const g = parseInt(bgHex.slice(3,5), 16);
+      const b = parseInt(bgHex.slice(5,7), 16);
+      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+      // Jika background terang, teks hitam. Jika background gelap, teks putih.
+      ctx.fillStyle = luma > 128 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)';
+      
+      // Ukuran font otomatis menyesuaikan
+      let fontSize = Math.max(14, Math.floor(canvas.width * 0.03));
+      let textY = canvas.height - (bottomBorderPx / 2);
+
+      // Kalau bukan polaroid dan border terlalu tipis, taruh watermark di dalam area gambar
+      if (!polaroidToggle.checked && bottomBorderPx < fontSize * 1.5) {
+        textY = canvas.height - bottomBorderPx - (fontSize / 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'; // paksa putih shadow kalau numpang di foto
+        ctx.shadowColor = 'black';
+        ctx.shadowBlur = 4;
+      } else {
+        ctx.shadowBlur = 0; // reset shadow
+      }
+
+      ctx.font = `italic ${fontSize}px "Segoe UI", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(wmText, canvas.width / 2, textY);
+    }
   }
 
-  // Trigger saat file diupload
+  // Event Listeners Inputs
   fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -348,19 +422,19 @@
     reader.readAsDataURL(file);
   });
 
-  // Trigger saat kontrol diubah
   sizeInput.addEventListener('input', processImage);
   colorInput.addEventListener('input', processImage);
+  watermarkInput.addEventListener('input', processImage);
   polaroidToggle.addEventListener('change', processImage);
+  splatterToggle.addEventListener('change', processImage);
 
-  // Trigger download
   downloadBtn.addEventListener('click', () => {
     if (!currentImg) {
       alert('Please upload an image first.');
       return;
     }
     const link = document.createElement('a');
-    link.download = 'bordered-photo.png';
+    link.download = 'vintage-bordered-photo.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   });
