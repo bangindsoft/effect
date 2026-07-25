@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fisheye Lens Effect Pro</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #0ea5e9; /* Ocean Blue */
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 8px;
+    }
+
+    .tool-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+
+    .tool-title {
+      margin: 0 0 2px 0;
+      color: var(--accent);
+      font-size: 1.2rem;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 6px;
+      text-align: left;
+      margin: 8px 0;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .control-group input[type="file"],
+    .control-group input[type="range"],
+    .control-group select {
+      width: 100%;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 5px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+
+    @media (max-width: 500px) {
+      .span-2, .span-3 { grid-column: span 1; }
+    }
+
+    .canvas-container {
+      position: relative;
+      overflow: hidden;
+      max-height: 330px;
+      background: 
+        repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 
+        50% / 20px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0;
+      cursor: default;
+      user-select: none; 
+      -webkit-user-select: none;
+      margin-top: 10px;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 330px;
+      width: auto;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+      transition: transform 0.1s ease-out; 
+      transform-origin: center center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); 
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover { background: var(--accent-hover); }
+
+    .hint-text { font-size: 11px; color: #cbd5e1; text-align: left; }
+    .privacy-note { font-size: 10px; color: var(--text-muted); margin-top: 12px; margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Fisheye Lens Effect Pro</h2>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Transform your photos with an ultra-wide spherical lens distortion.</p>
+
+    <div class="controls-grid">
+      <!-- MAIN UPLOAD -->
+      <div class="control-group span-2">
+        <label>1. Upload Photo</label>
+        <input type="file" id="fisheye-base-file" accept="image/*">
+      </div>
+      
+      <div class="control-group">
+        <label>2. Distortion Type</label>
+        <select id="fisheye-mode">
+          <option value="convex" selected>Convex (Bulge / Out)</option>
+          <option value="concave">Concave (Pincushion / In)</option>
+        </select>
+      </div>
+
+      <!-- SLIDERS -->
+      <div class="control-group span-2">
+        <label><span>Curvature Intensity</span> <span id="val-intensity">50%</span></label>
+        <input type="range" id="fisheye-intensity" min="0" max="100" value="50">
+      </div>
+
+      <div class="control-group">
+        <label><span>Edge Zoom (Scale)</span> <span id="val-radius">100%</span></label>
+        <input type="range" id="fisheye-radius" min="50" max="150" value="100">
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="fisheye-canvas"></canvas>
+    </div>
+
+    <div class="footer-actions">
+      <div class="hint-text">
+        💡 <b>Tips:</b> Scroll to Zoom Canvas | Click & Drag to Move | Dbl-Click to Reset View
+      </div>
+      <button id="fisheye-download-btn" class="btn-download">Save Photo (JPEG)</button>
+    </div>
+    
+    <p class="privacy-note">🔒 Privacy Protected: Your photos never leave your device.</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  const baseFileInput = document.getElementById('fisheye-base-file');
+  const modeSelect = document.getElementById('fisheye-mode');
+  const intensityInput = document.getElementById('fisheye-intensity');
+  const radiusInput = document.getElementById('fisheye-radius');
+  
+  const valIntensity = document.getElementById('val-intensity');
+  const valRadius = document.getElementById('val-radius');
+
+  const canvas = document.getElementById('fisheye-canvas');
+  const container = document.getElementById('canvas-container');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const downloadBtn = document.getElementById('fisheye-download-btn');
+
+  let currentBaseImg = null;
+  let processingId = null;
+
+  // Zoom & Pan Mechanics
+  let zoomLevel = 1; let isDragging = false;
+  let startX, startY; let translateX = 0, translateY = 0;
+
+  function resetZoomPan() { zoomLevel = 1; translateX = 0; translateY = 0; updateTransform(); }
+  function updateTransform() { canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`; }
+
+  container.addEventListener('wheel', (e) => {
+    if (!currentBaseImg) return;
+    e.preventDefault();
+    zoomLevel += e.deltaY < 0 ? 0.15 : -0.15;
+    zoomLevel = Math.max(0.5, Math.min(zoomLevel, 6));
+    updateTransform();
+  }, { passive: false });
+
+  container.addEventListener('mousedown', (e) => {
+    if (!currentBaseImg) return;
+    isDragging = true;
+    startX = e.clientX - translateX; startY = e.clientY - translateY;
+    container.style.cursor = 'grabbing';
+  });
+  container.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
+  container.addEventListener('mouseleave', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
+  container.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    translateX = e.clientX - startX; translateY = e.clientY - startY;
+    updateTransform();
+  });
+  container.addEventListener('dblclick', () => { if (currentBaseImg) resetZoomPan(); });
+
+  function initPlaceholder() {
+    canvas.width = 600; canvas.height = 300;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#64748b'; ctx.font = '15px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Upload a photo to apply Fisheye Effect', canvas.width / 2, canvas.height / 2);
+  }
+
+  function processImage() {
+    if (!currentBaseImg) return;
+
+    valIntensity.textContent = intensityInput.value + '%';
+    valRadius.textContent = radiusInput.value + '%';
+
+    // Batasi resolusi maksimum untuk performa web real-time yang optimal (max 900px)
+    const maxDim = 900; 
+    let w = currentBaseImg.width;
+    let h = currentBaseImg.height;
+    
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
+
+    canvas.width = w; canvas.height = h;
+
+    // Gambar asal ke offscreen/canvas dulu untuk dibaca pixel-nya
+    ctx.drawImage(currentBaseImg, 0, 0, w, h);
+    
+    const srcImgData = ctx.getImageData(0, 0, w, h);
+    const srcPixels = srcImgData.data;
+    const destImgData = ctx.createImageData(w, h);
+    const destPixels = destImgData.data;
+
+    const intensityVal = parseInt(intensityInput.value) / 100;
+    const scaleFactor = parseInt(radiusInput.value) / 100;
+    const mode = modeSelect.value;
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const maxRadius = Math.sqrt(cx * cx + cy * cy);
+
+    // Algoritma Fisheye Mapping Pixel
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dx = x - cx;
+        const dy = y - cy;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        let nx = x, ny = y;
+
+        if (distance < maxRadius && distance > 0) {
+          const normalizedDist = distance / maxRadius;
+          
+          let distortedDist;
+          if (mode === 'convex') {
+            // Formula Bulge / Convex Fisheye
+            const power = 1.0 + intensityVal * 1.5;
+            distortedDist = Math.pow(normalizedDist, power) * maxRadius * scaleFactor;
+          } else {
+            // Formula Concave / Pincushion
+            const power = 1.0 / (1.0 + intensityVal * 1.5);
+            distortedDist = Math.pow(normalizedDist, power) * maxRadius * scaleFactor;
+          }
+
+          const angle = Math.atan2(dy, dx);
+          nx = cx + distortedDist * Math.cos(angle);
+          ny = cy + distortedDist * Math.sin(angle);
+        }
+
+        const destIdx = (y * w + x) * 4;
+
+        // Bilinear Interpolation / Nearest Neighbor Check
+        const srcX = Math.round(nx);
+        const srcY = Math.round(ny);
+
+        if (srcX >= 0 && srcX < w && srcY >= 0 && srcY < h) {
+          const srcIdx = (srcY * w + srcX) * 4;
+          destPixels[destIdx]     = srcPixels[srcIdx];     // R
+          destPixels[destIdx + 1] = srcPixels[srcIdx + 1]; // G
+          destPixels[destIdx + 2] = srcPixels[srcIdx + 2]; // B
+          destPixels[destIdx + 3] = srcPixels[srcIdx + 3]; // A
+        } else {
+          // Warna latar kosong (Hitam transparan / pinggiran)
+          destPixels[destIdx]     = 15;
+          destPixels[destIdx + 1] = 23;
+          destPixels[destIdx + 2] = 42;
+          destPixels[destIdx + 3] = 255;
+        }
+      }
+    }
+
+    ctx.putImageData(destImgData, 0, 0);
+  }
+
+  baseFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        currentBaseImg = img;
+        container.style.cursor = 'grab';
+        resetZoomPan();
+        processImage();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Event Listeners dengan debouncing ringan untuk slider agar gesernya smooth
+  [modeSelect, intensityInput, radiusInput].forEach(element => {
+    element.addEventListener('input', () => {
+      clearTimeout(processingId);
+      processingId = setTimeout(processImage, 50);
+    });
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!currentBaseImg) { alert('Please upload a photo first!'); return; }
+    const link = document.createElement('a');
+    link.download = 'fisheye-photo.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.9);
+    link.click();
+  });
+
+  initPlaceholder();
+})();
+</script>
+
+</body>
+</html>
