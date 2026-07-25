@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>High-Pass Image Sharpener</title>
+  <style>
+    :root {
+      --bg-main: #0b1329;
+      --bg-card: #1e293b;
+      --accent: #10b981; /* Warna hijau emerald agar beda dari blueprint */
+      --accent-hover: #059669;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 8px;
+    }
+
+    .tool-box {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+
+    .tool-title {
+      margin: 0 0 2px 0;
+      color: var(--accent);
+      font-size: 1.2rem;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 6px;
+      text-align: left;
+      margin: 8px 0;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .control-group input[type="file"],
+    .control-group input[type="range"] {
+      width: 100%;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 4px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .canvas-container {
+      position: relative;
+      overflow: hidden;
+      max-height: 350px;
+      background: #020617;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0;
+      cursor: default;
+      user-select: none; 
+      -webkit-user-select: none;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 350px;
+      width: auto;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+      transition: transform 0.1s ease-out; 
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transform-origin: center center;
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover {
+      background: var(--accent-hover);
+    }
+
+    .hint-text {
+      font-size: 11px;
+      color: #cbd5e1;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">High-Pass Sharpen Image</h2>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Enhance details and edges instantly using High-Pass convolution filter.</p>
+
+    <div class="controls-grid">
+      <div class="control-group">
+        <label>1. Select Photo</label>
+        <input type="file" id="sp-file-input" accept="image/*">
+      </div>
+      
+      <div class="control-group">
+        <label>
+          <span>2. Sharpen Amount</span>
+          <span id="amount-val">50%</span>
+        </label>
+        <!-- Nilai range 0 sampai 1.5, default 0.5 -->
+        <input type="range" id="sp-amount" min="0" max="1.5" step="0.1" value="0.5">
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="sp-canvas"></canvas>
+    </div>
+
+    <div class="footer-actions">
+      <div class="hint-text">
+        💡 <b>Tips:</b> Scroll to Zoom | Click & Drag to Move | Dbl-Click to Reset
+      </div>
+      <button id="sp-download-btn" class="btn-download">Save Result (PNG)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const fileInput = document.getElementById('sp-file-input');
+  const amountInput = document.getElementById('sp-amount');
+  const amountValText = document.getElementById('amount-val');
+  const canvas = document.getElementById('sp-canvas');
+  const container = document.getElementById('canvas-container');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const downloadBtn = document.getElementById('sp-download-btn');
+
+  let currentImg = null;
+
+  // Variabel untuk Zoom & Pan
+  let zoomLevel = 1;
+  let isDragging = false;
+  let startX, startY;
+  let translateX = 0, translateY = 0;
+
+  function resetZoomPan() {
+    zoomLevel = 1;
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
+  }
+
+  function updateTransform() {
+    canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
+  }
+
+  // Event Listener Zoom
+  container.addEventListener('wheel', function(e) {
+    if (!currentImg) return;
+    e.preventDefault();
+    const zoomStep = 0.15;
+    if (e.deltaY < 0) zoomLevel += zoomStep; 
+    else zoomLevel -= zoomStep; 
+    zoomLevel = Math.max(0.5, Math.min(zoomLevel, 6));
+    updateTransform();
+  }, { passive: false });
+
+  // Event Listener Pan
+  container.addEventListener('mousedown', (e) => {
+    if (!currentImg) return;
+    isDragging = true;
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+    container.style.cursor = 'grabbing';
+  });
+
+  container.addEventListener('mouseup', () => {
+    isDragging = false;
+    container.style.cursor = currentImg ? 'grab' : 'default';
+  });
+
+  container.addEventListener('mouseleave', () => {
+    isDragging = false;
+    container.style.cursor = currentImg ? 'grab' : 'default';
+  });
+
+  container.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    translateX = e.clientX - startX;
+    translateY = e.clientY - startY;
+    updateTransform();
+  });
+
+  container.addEventListener('dblclick', () => {
+    if (currentImg) resetZoomPan();
+  });
+
+  function initPlaceholder() {
+    canvas.width = 600;
+    canvas.height = 300;
+    container.style.backgroundColor = '#0f172a';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#64748b';
+    ctx.font = '15px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Upload an image to apply sharpen filter', canvas.width / 2, canvas.height / 2);
+  }
+
+  // Logika Pemrosesan Gambar (Convolution Matrix)
+  function processImage() {
+    if (!currentImg) return;
+
+    // Update teks persentase slider
+    amountValText.textContent = Math.round((amountInput.value / 1.5) * 100) + '%';
+
+    const maxDim = 1200; // Batasi ukuran maksimal agar browser tidak hang
+    let w = currentImg.width;
+    let h = currentImg.height;
+    
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+
+    // Selalu gambar ulang dari gambar aslinya (currentImg) sebelum di-filter
+    ctx.drawImage(currentImg, 0, 0, w, h);
+    
+    const amount = parseFloat(amountInput.value);
+    
+    // Jika slider 0, hentikan proses (tampilkan gambar asli)
+    if (amount === 0) return;
+
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    const outputData = new Uint8ClampedArray(data.length);
+    const sw = w * 4;
+
+    // Matrix High-Pass Sharpen 
+    // Inti: Pusat nilai positif tinggi, sisi dikurangi (edge detection)
+    const center = 1 + (4 * amount);
+    const side = -amount;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+        
+        // Abaikan piksel di tepi gambar (border)
+        if (x === 0 || y === 0 || x === w - 1 || y === h - 1) {
+          outputData[idx] = data[idx];
+          outputData[idx+1] = data[idx+1];
+          outputData[idx+2] = data[idx+2];
+          outputData[idx+3] = data[idx+3];
+          continue;
+        }
+
+        // Kalkulasi matriks per channel warna (R, G, B)
+        for (let c = 0; c < 3; c++) {
+          const val =
+            data[idx - sw + c] * side + // atas
+            data[idx - 4 + c] * side +  // kiri
+            data[idx + c] * center +    // tengah
+            data[idx + 4 + c] * side +  // kanan
+            data[idx + sw + c] * side;  // bawah
+          
+          outputData[idx + c] = val;
+        }
+        // Alpha (transparansi) tetap
+        outputData[idx + 3] = data[idx + 3];
+      }
+    }
+
+    // Terapkan hasil kalkulasi kembali ke canvas
+    const newImgData = new ImageData(outputData, w, h);
+    ctx.putImageData(newImgData, 0, 0);
+  }
+
+  // Trigger saat file diupload
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        currentImg = img;
+        container.style.cursor = 'grab';
+        resetZoomPan();
+        processImage();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Trigger saat slider digeser (real-time processing)
+  amountInput.addEventListener('input', processImage);
+
+  // Trigger download
+  downloadBtn.addEventListener('click', () => {
+    if (!currentImg) {
+      alert('Please upload an image first.');
+      return;
+    }
+    const link = document.createElement('a');
+    link.download = 'sharpened-image.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  initPlaceholder();
+})();
+</script>
+
+</body>
+</html>
