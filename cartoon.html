@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo to Cartoon Effect Pro</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #0ea5e9; /* Ocean Blue */
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 8px;
+    }
+
+    .tool-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+
+    .tool-title {
+      margin: 0 0 2px 0;
+      color: var(--accent);
+      font-size: 1.2rem;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 6px;
+      text-align: left;
+      margin: 8px 0;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .control-group input[type="file"],
+    .control-group input[type="range"],
+    .control-group select {
+      width: 100%;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 5px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+
+    @media (max-width: 500px) {
+      .span-2, .span-3 { grid-column: span 1; }
+    }
+
+    .canvas-container {
+      position: relative;
+      overflow: hidden;
+      max-height: 330px;
+      background: 
+        repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 
+        50% / 20px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0;
+      cursor: default;
+      user-select: none; 
+      -webkit-user-select: none;
+      margin-top: 10px;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 330px;
+      width: auto;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+      transition: transform 0.1s ease-out; 
+      transform-origin: center center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); 
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover { background: var(--accent-hover); }
+
+    .hint-text { font-size: 11px; color: #cbd5e1; text-align: left; }
+    .privacy-note { font-size: 10px; color: var(--text-muted); margin-top: 12px; margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Photo to Cartoon Effect Pro</h2>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Convert your ordinary photos into stunning comic illustrations instantly.</p>
+
+    <div class="controls-grid">
+      <!-- MAIN UPLOAD -->
+      <div class="control-group span-2">
+        <label>1. Upload Photo</label>
+        <input type="file" id="cartoon-base-file" accept="image/*">
+      </div>
+      
+      <div class="control-group">
+        <label>2. Cartoon Style</label>
+        <select id="cartoon-style">
+          <option value="classic" selected>Classic Comic</option>
+          <option value="vibrant">Vibrant Pop Art</option>
+          <option value="sketch">Ink Sketch Only</option>
+        </select>
+      </div>
+
+      <!-- SLIDERS -->
+      <div class="control-group">
+        <label><span>Edge Strength</span> <span id="val-edge">50</span></label>
+        <input type="range" id="cartoon-edge" min="10" max="100" value="50">
+      </div>
+
+      <div class="control-group">
+        <label><span>Color Levels</span> <span id="val-levels">6</span></label>
+        <input type="range" id="cartoon-levels" min="2" max="16" value="6">
+      </div>
+
+      <div class="control-group">
+        <label><span>Smoothness</span> <span id="val-smooth">4</span></label>
+        <input type="range" id="cartoon-smooth" min="1" max="10" value="4">
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="cartoon-canvas"></canvas>
+    </div>
+
+    <div class="footer-actions">
+      <div class="hint-text">
+        💡 <b>Tips:</b> Scroll to Zoom Canvas | Click & Drag to Move | Dbl-Click to Reset View
+      </div>
+      <button id="cartoon-download-btn" class="btn-download">Save Photo (JPEG)</button>
+    </div>
+    
+    <p class="privacy-note">🔒 Privacy Protected: Your photos never leave your device.</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  const baseFileInput = document.getElementById('cartoon-base-file');
+  const styleSelect = document.getElementById('cartoon-style');
+  const edgeInput = document.getElementById('cartoon-edge');
+  const levelsInput = document.getElementById('cartoon-levels');
+  const smoothInput = document.getElementById('cartoon-smooth');
+  
+  const valEdge = document.getElementById('val-edge');
+  const valLevels = document.getElementById('val-levels');
+  const valSmooth = document.getElementById('val-smooth');
+
+  const canvas = document.getElementById('cartoon-canvas');
+  const container = document.getElementById('canvas-container');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const downloadBtn = document.getElementById('cartoon-download-btn');
+
+  let currentBaseImg = null;
+  let processingId = null;
+
+  // Zoom & Pan Mechanics
+  let zoomLevel = 1; let isDragging = false;
+  let startX, startY; let translateX = 0, translateY = 0;
+
+  function resetZoomPan() { zoomLevel = 1; translateX = 0; translateY = 0; updateTransform(); }
+  function updateTransform() { canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`; }
+
+  container.addEventListener('wheel', (e) => {
+    if (!currentBaseImg) return;
+    e.preventDefault();
+    zoomLevel += e.deltaY < 0 ? 0.15 : -0.15;
+    zoomLevel = Math.max(0.5, Math.min(zoomLevel, 6));
+    updateTransform();
+  }, { passive: false });
+
+  container.addEventListener('mousedown', (e) => {
+    if (!currentBaseImg) return;
+    isDragging = true;
+    startX = e.clientX - translateX; startY = e.clientY - translateY;
+    container.style.cursor = 'grabbing';
+  });
+  container.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
+  container.addEventListener('mouseleave', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
+  container.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    translateX = e.clientX - startX; translateY = e.clientY - startY;
+    updateTransform();
+  });
+  container.addEventListener('dblclick', () => { if (currentBaseImg) resetZoomPan(); });
+
+  function initPlaceholder() {
+    canvas.width = 600; canvas.height = 300;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#64748b'; ctx.font = '15px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Upload a photo to create Cartoon Effect', canvas.width / 2, canvas.height / 2);
+  }
+
+  function processImage() {
+    if (!currentBaseImg) return;
+
+    valEdge.textContent = edgeInput.value;
+    valLevels.textContent = levelsInput.value;
+    valSmooth.textContent = smoothInput.value;
+
+    const maxDim = 800; // Batasi ukuran untuk kecepatan proses real-time
+    let w = currentBaseImg.width;
+    let h = currentBaseImg.height;
+    
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
+
+    canvas.width = w; canvas.height = h;
+    ctx.drawImage(currentBaseImg, 0, 0, w, h);
+    
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const src = imgData.data;
+    const len = src.length;
+
+    const edgeThreshold = 110 - parseInt(edgeInput.value);
+    const levels = parseInt(levelsInput.value);
+    const smoothRadius = parseInt(smoothInput.value);
+    const style = styleSelect.value;
+
+    // Salinan data pixel untuk kalkulasi warna dan tepi
+    const rData = new Uint8ClampedArray(len);
+    for (let i = 0; i < len; i++) rData[i] = src[i];
+
+    // 1. Color Quantization & Posterization (Penyederhanaan Warna Kartun)
+    const factor = 255 / (levels - 1);
+    for (let i = 0; i < len; i += 4) {
+      let r = rData[i];
+      let g = rData[i + 1];
+      let b = rData[i + 2];
+
+      if (style === 'vibrant') {
+        // Tingkatkan saturasi warna sedikit untuk efek pop art
+        r = Math.min(255, r * 1.15);
+        g = Math.min(255, g * 1.15);
+        b = Math.min(255, b * 1.15);
+      }
+
+      // Posterize
+      r = Math.round(Math.round(r / factor) * factor);
+      g = Math.round(Math.round(g / factor) * factor);
+      b = Math.round(Math.round(b / factor) * factor);
+
+      if (style === 'sketch') {
+        // Buat monokrom untuk mode sketsa tinta
+        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+        rData[i] = rData[i+1] = rData[i+2] = gray > 200 ? 255 : gray;
+      } else {
+        rData[i] = r;
+        rData[i+1] = g;
+        rData[i+2] = b;
+      }
+    }
+
+    // 2. Edge Detection (Sobel / Gradient sederhana untuk garis luar komik)
+    const output = ctx.createImageData(w, h);
+    const outPixels = output.data;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+
+        // Cek tetangga sekitar untuk deteksi kontras garis tepi
+        let isEdge = false;
+        if (x > 0 && x < w - 1 && y > 0 && y < h - 1) {
+          const leftIdx = (y * w + (x - 1)) * 4;
+          const rightIdx = (y * w + (x + 1)) * 4;
+          const topIdx = ((y - 1) * w + x) * 4;
+          const bottomIdx = ((y + 1) * w + x) * 4;
+
+          const diffX = Math.abs(src[leftIdx] - src[rightIdx]) + 
+                        Math.abs(src[leftIdx+1] - src[rightIdx+1]) + 
+                        Math.abs(src[leftIdx+2] - src[rightIdx+2]);
+          const diffY = Math.abs(src[topIdx] - src[bottomIdx]) + 
+                        Math.abs(src[topIdx+1] - src[bottomIdx+1]) + 
+                        Math.abs(src[topIdx+2] - src[bottomIdx+2]);
+
+          if ((diffX + diffY) / 2 > edgeThreshold) {
+            isEdge = true;
+          }
+        }
+
+        if (isEdge) {
+          // Beri garis tinta hitam pekat ala komik
+          outPixels[idx]     = 20;
+          outPixels[idx + 1] = 20;
+          outPixels[idx + 2] = 20;
+          outPixels[idx + 3] = 255;
+        } else {
+          // Pakai warna hasil posterisasi kartun
+          outPixels[idx]     = rData[idx];
+          outPixels[idx + 1] = rData[idx + 1];
+          outPixels[idx + 2] = rData[idx + 2];
+          outPixels[idx + 3] = 255;
+        }
+      }
+    }
+
+    ctx.putImageData(output, 0, 0);
+  }
+
+  baseFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        currentBaseImg = img;
+        container.style.cursor = 'grab';
+        resetZoomPan();
+        processImage();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  [styleSelect, edgeInput, levelsInput, smoothInput].forEach(element => {
+    element.addEventListener('input', () => {
+      clearTimeout(processingId);
+      processingId = setTimeout(processImage, 50);
+    });
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!currentBaseImg) { alert('Please upload a photo first!'); return; }
+    const link = document.createElement('a');
+    link.download = 'cartoon-photo.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.9);
+    link.click();
+  });
+
+  initPlaceholder();
+})();
+</script>
+
+</body>
+</html>
