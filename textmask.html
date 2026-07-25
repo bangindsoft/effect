@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image in Text Masking</title>
+  <style>
+    :root {
+      --bg-main: #0b1329;
+      --bg-card: #1e293b;
+      --accent: #f43f5e; /* Warna Rose/Pink */
+      --accent-hover: #e11d48;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 8px;
+    }
+
+    .tool-box {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+
+    .tool-title {
+      margin: 0 0 2px 0;
+      color: var(--accent);
+      font-size: 1.2rem;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 6px;
+      text-align: left;
+      margin: 8px 0;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .control-group input[type="file"],
+    .control-group input[type="range"],
+    .control-group input[type="text"],
+    .control-group input[type="color"],
+    .control-group select {
+      width: 100%;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 5px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .control-group input[type="color"] {
+      padding: 1px 2px;
+      height: 26px;
+      cursor: pointer;
+    }
+
+    .span-2 {
+      grid-column: span 2;
+    }
+
+    @media (max-width: 500px) {
+      .span-2 { grid-column: span 1; }
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 6px; 
+      margin-bottom: 6px;
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .canvas-container {
+      position: relative;
+      overflow: hidden;
+      max-height: 330px;
+      /* Background kotak-kotak catur untuk menandakan transparansi */
+      background: 
+        repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 
+        50% / 20px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0;
+      cursor: default;
+      user-select: none; 
+      -webkit-user-select: none;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 330px;
+      width: auto;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+      transition: transform 0.1s ease-out; 
+      will-change: transform;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transform-origin: center center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); 
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover {
+      background: var(--accent-hover);
+    }
+
+    .hint-text {
+      font-size: 11px;
+      color: #cbd5e1;
+      text-align: left;
+    }
+
+    .privacy-note {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 12px;
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Image Text Masking</h2>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Put your photo inside custom text beautifully.</p>
+
+    <div class="controls-grid">
+      <div class="control-group">
+        <label>1. Select Photo</label>
+        <input type="file" id="tm-file-input" accept="image/*">
+      </div>
+      
+      <div class="control-group span-2">
+        <label>2. Your Text</label>
+        <input type="text" id="tm-text" value="AWESOME" placeholder="Type your text here...">
+      </div>
+
+      <div class="control-group">
+        <label>
+          <span>3. Font Size</span>
+          <span id="tm-size-val">100%</span>
+        </label>
+        <input type="range" id="tm-size" min="10" max="250" value="100">
+      </div>
+
+      <div class="control-group">
+        <label>4. Font Style</label>
+        <select id="tm-font">
+          <option value="Impact">Impact (Best)</option>
+          <option value="Arial Black">Arial Black</option>
+          <option value="Verdana">Verdana</option>
+          <option value="Georgia">Georgia</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>5. Background Color</label>
+        <input type="color" id="tm-color" value="#ffffff">
+      </div>
+    </div>
+
+    <div class="checkbox-group">
+      <div class="checkbox-item">
+        <input type="checkbox" id="tm-transparent" checked>
+        <label for="tm-transparent" style="margin:0; font-size: 11px; color: #cbd5e1;">Make Background Transparent (PNG)</label>
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="tm-canvas"></canvas>
+    </div>
+
+    <div class="footer-actions">
+      <div class="hint-text">
+        💡 <b>Tips:</b> Scroll to Zoom | Click & Drag to Move | Dbl-Click to Reset
+      </div>
+      <button id="tm-download-btn" class="btn-download">Save Result (PNG)</button>
+    </div>
+    
+    <p class="privacy-note">🔒 Privacy Protected: All processing happens locally on your device.</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  const fileInput = document.getElementById('tm-file-input');
+  const textInput = document.getElementById('tm-text');
+  const sizeInput = document.getElementById('tm-size');
+  const sizeValText = document.getElementById('tm-size-val');
+  const fontSelect = document.getElementById('tm-font');
+  const colorInput = document.getElementById('tm-color');
+  const transparentToggle = document.getElementById('tm-transparent');
+  
+  const canvas = document.getElementById('tm-canvas');
+  const container = document.getElementById('canvas-container');
+  const ctx = canvas.getContext('2d');
+  const downloadBtn = document.getElementById('tm-download-btn');
+
+  let currentImg = null;
+
+  // Zoom & Pan Mechanics
+  let zoomLevel = 1;
+  let isDragging = false;
+  let startX, startY;
+  let translateX = 0, translateY = 0;
+
+  function resetZoomPan() {
+    zoomLevel = 1;
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
+  }
+
+  function updateTransform() {
+    canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
+  }
+
+  container.addEventListener('wheel', function(e) {
+    if (!currentImg) return;
+    e.preventDefault();
+    const zoomStep = 0.15;
+    if (e.deltaY < 0) zoomLevel += zoomStep; 
+    else zoomLevel -= zoomStep; 
+    zoomLevel = Math.max(0.5, Math.min(zoomLevel, 6));
+    updateTransform();
+  }, { passive: false });
+
+  container.addEventListener('mousedown', (e) => {
+    if (!currentImg) return;
+    isDragging = true;
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+    container.style.cursor = 'grabbing';
+  });
+
+  container.addEventListener('mouseup', () => {
+    isDragging = false;
+    container.style.cursor = currentImg ? 'grab' : 'default';
+  });
+
+  container.addEventListener('mouseleave', () => {
+    isDragging = false;
+    container.style.cursor = currentImg ? 'grab' : 'default';
+  });
+
+  container.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    translateX = e.clientX - startX;
+    translateY = e.clientY - startY;
+    updateTransform();
+  });
+
+  container.addEventListener('dblclick', () => {
+    if (currentImg) resetZoomPan();
+  });
+
+  function initPlaceholder() {
+    canvas.width = 600;
+    canvas.height = 300;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#64748b';
+    ctx.font = '15px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Upload an image to create text mask', canvas.width / 2, canvas.height / 2);
+  }
+
+  function processImage() {
+    if (!currentImg) return;
+
+    sizeValText.textContent = sizeInput.value + '%';
+
+    const maxDim = 1200; 
+    let w = currentImg.width;
+    let h = currentImg.height;
+    
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+
+    // Persiapan Teks
+    const text = textInput.value || "TEXT";
+    const fontFamily = fontSelect.value;
+    const isTransparent = transparentToggle.checked;
+    
+    // Hitung ukuran font berdasarkan persentase slider dan ukuran gambar
+    const fontSize = Math.floor(Math.min(w, h) * (sizeInput.value / 100));
+    
+    // Impact sudah tebal, font lain kita paksa tebal agar mask-nya terlihat jelas
+    const fontWeight = fontFamily === 'Impact' ? 'normal' : 'bold';
+    
+    ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Logika Pemotongan (Masking)
+    if (isTransparent) {
+      // OPSI 1: Background Transparan (Gambar hanya ada di dalam teks)
+      ctx.clearRect(0, 0, w, h); // Bersihkan canvas
+      
+      // 1. Gambar teksnya dulu (warna bebas, karena akan jadi pola potongan)
+      ctx.fillStyle = 'black'; 
+      ctx.fillText(text, w/2, h/2);
+      
+      // 2. Ganti mode gambar menjadi "source-in" (Hanya tampilkan di atas piksel yang sudah ada)
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.drawImage(currentImg, 0, 0, w, h);
+      
+    } else {
+      // OPSI 2: Background Solid (Background solid, bolong bentuk teks, gambar di belakangnya)
+      
+      // 1. Gambar warna background solid
+      ctx.fillStyle = colorInput.value;
+      ctx.fillRect(0, 0, w, h);
+
+      // 2. Ganti mode menjadi "destination-out" (Buat lubang transparan)
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'black';
+      ctx.fillText(text, w/2, h/2);
+
+      // 3. Ganti mode menjadi "destination-over" (Gambar ditaruh di lapisan paling belakang)
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.drawImage(currentImg, 0, 0, w, h);
+    }
+    
+    // Kembalikan ke mode normal untuk amannya
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // Event Listeners Inputs
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        currentImg = img;
+        container.style.cursor = 'grab';
+        resetZoomPan();
+        processImage();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  textInput.addEventListener('input', processImage);
+  sizeInput.addEventListener('input', processImage);
+  fontSelect.addEventListener('change', processImage);
+  colorInput.addEventListener('input', processImage);
+  transparentToggle.addEventListener('change', processImage);
+
+  downloadBtn.addEventListener('click', () => {
+    if (!currentImg) {
+      alert('Please upload an image first.');
+      return;
+    }
+    const link = document.createElement('a');
+    link.download = 'text-mask-image.png';
+    // Otomatis men-download sebagai PNG supaya transparansinya terjaga
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  initPlaceholder();
+})();
+</script>
+
+</body>
+</html>
