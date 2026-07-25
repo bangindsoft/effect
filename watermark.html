@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Watermark Pro</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #0ea5e9; /* Warna Ocean Blue */
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 8px;
+    }
+
+    .tool-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+
+    .tool-title {
+      margin: 0 0 2px 0;
+      color: var(--accent);
+      font-size: 1.2rem;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 6px;
+      text-align: left;
+      margin: 8px 0;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .control-group input[type="file"],
+    .control-group input[type="range"],
+    .control-group input[type="text"],
+    .control-group input[type="color"],
+    .control-group select {
+      width: 100%;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 5px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .control-group input[type="color"] {
+      padding: 1px 2px;
+      height: 26px;
+      cursor: pointer;
+    }
+
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+
+    @media (max-width: 500px) {
+      .span-2, .span-3 { grid-column: span 1; }
+    }
+
+    .canvas-container {
+      position: relative;
+      overflow: hidden;
+      max-height: 330px;
+      background: 
+        repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 
+        50% / 20px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0;
+      cursor: default;
+      user-select: none; 
+      -webkit-user-select: none;
+      margin-top: 10px;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 330px;
+      width: auto;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+      transition: transform 0.1s ease-out; 
+      transform-origin: center center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5); 
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-download:hover { background: var(--accent-hover); }
+
+    .hint-text { font-size: 11px; color: #cbd5e1; text-align: left; }
+    .privacy-note { font-size: 10px; color: var(--text-muted); margin-top: 12px; margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Photo Watermark Pro</h2>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Protect your photos with custom Text or Logo watermarks.</p>
+
+    <div class="controls-grid">
+      <!-- MAIN UPLOAD -->
+      <div class="control-group">
+        <label>1. Upload Photo</label>
+        <input type="file" id="wm-base-file" accept="image/*">
+      </div>
+      
+      <div class="control-group">
+        <label>2. Watermark Type</label>
+        <select id="wm-type">
+          <option value="text">✍️ Text Watermark</option>
+          <option value="image">🖼️ Logo / Image</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>3. Position</label>
+        <select id="wm-pos">
+          <option value="center">Center</option>
+          <option value="bottom-right" selected>Bottom Right</option>
+          <option value="bottom-left">Bottom Left</option>
+          <option value="top-right">Top Right</option>
+          <option value="top-left">Top Left</option>
+        </select>
+      </div>
+
+      <!-- TEXT CONTROLS (Tampil Default) -->
+      <div class="control-group span-2" id="box-text-input">
+        <label>Text Content</label>
+        <input type="text" id="wm-text" value="© YourName" placeholder="Enter watermark text...">
+      </div>
+
+      <div class="control-group" id="box-text-font">
+        <label>Font Style</label>
+        <select id="wm-font">
+          <option value="Arial">Arial</option>
+          <option value="Impact">Impact</option>
+          <option value="Courier New">Courier</option>
+          <option value="Georgia">Georgia</option>
+        </select>
+      </div>
+
+      <div class="control-group" id="box-text-color">
+        <label>Text Color</label>
+        <input type="color" id="wm-color" value="#ffffff">
+      </div>
+
+      <!-- IMAGE CONTROLS (Sembunyi Default) -->
+      <div class="control-group span-3" id="box-image-input" style="display: none;">
+        <label>Upload Logo (PNG Transparent Recommended)</label>
+        <input type="file" id="wm-logo-file" accept="image/png, image/jpeg, image/webp">
+      </div>
+
+      <!-- SHARED CONTROLS (Size & Opacity) -->
+      <div class="control-group span-2">
+        <label><span>Size (Scale)</span> <span id="val-size">15%</span></label>
+        <input type="range" id="wm-size" min="1" max="100" value="15">
+      </div>
+
+      <div class="control-group">
+        <label><span>Opacity</span> <span id="val-opacity">70%</span></label>
+        <input type="range" id="wm-opacity" min="0" max="100" value="70">
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="wm-canvas"></canvas>
+    </div>
+
+    <div class="footer-actions">
+      <div class="hint-text">
+        💡 <b>Tips:</b> Scroll to Zoom | Click & Drag to Move | Dbl-Click to Reset
+      </div>
+      <button id="wm-download-btn" class="btn-download">Save Photo (JPEG)</button>
+    </div>
+    
+    <p class="privacy-note">🔒 Privacy Protected: Your photos never leave your device.</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  const baseFileInput = document.getElementById('wm-base-file');
+  const logoFileInput = document.getElementById('wm-logo-file');
+  const typeSelect = document.getElementById('wm-type');
+  const posSelect = document.getElementById('wm-pos');
+  
+  const textInput = document.getElementById('wm-text');
+  const fontSelect = document.getElementById('wm-font');
+  const colorInput = document.getElementById('wm-color');
+  
+  const sizeInput = document.getElementById('wm-size');
+  const opacityInput = document.getElementById('wm-opacity');
+  const valSize = document.getElementById('val-size');
+  const valOpacity = document.getElementById('val-opacity');
+
+  const boxTextInput = document.getElementById('box-text-input');
+  const boxTextFont = document.getElementById('box-text-font');
+  const boxTextColor = document.getElementById('box-text-color');
+  const boxImageInput = document.getElementById('box-image-input');
+
+  const canvas = document.getElementById('wm-canvas');
+  const container = document.getElementById('canvas-container');
+  const ctx = canvas.getContext('2d');
+  const downloadBtn = document.getElementById('wm-download-btn');
+
+  let currentBaseImg = null;
+  let currentLogoImg = null;
+
+  // Mode Toggle Logic
+  typeSelect.addEventListener('change', (e) => {
+    const mode = e.target.value;
+    if (mode === 'text') {
+      boxTextInput.style.display = 'block';
+      boxTextFont.style.display = 'block';
+      boxTextColor.style.display = 'block';
+      boxImageInput.style.display = 'none';
+    } else {
+      boxTextInput.style.display = 'none';
+      boxTextFont.style.display = 'none';
+      boxTextColor.style.display = 'none';
+      boxImageInput.style.display = 'block';
+    }
+    processImage();
+  });
+
+  // Zoom & Pan Mechanics (Sama seperti sebelumnya biar konsisten)
+  let zoomLevel = 1; let isDragging = false;
+  let startX, startY; let translateX = 0, translateY = 0;
+
+  function resetZoomPan() { zoomLevel = 1; translateX = 0; translateY = 0; updateTransform(); }
+  function updateTransform() { canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`; }
+
+  container.addEventListener('wheel', (e) => {
+    if (!currentBaseImg) return;
+    e.preventDefault();
+    zoomLevel += e.deltaY < 0 ? 0.15 : -0.15;
+    zoomLevel = Math.max(0.5, Math.min(zoomLevel, 6));
+    updateTransform();
+  }, { passive: false });
+
+  container.addEventListener('mousedown', (e) => {
+    if (!currentBaseImg) return;
+    isDragging = true;
+    startX = e.clientX - translateX; startY = e.clientY - translateY;
+    container.style.cursor = 'grabbing';
+  });
+  container.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
+  container.addEventListener('mouseleave', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
+  container.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    translateX = e.clientX - startX; translateY = e.clientY - startY;
+    updateTransform();
+  });
+  container.addEventListener('dblclick', () => { if (currentBaseImg) resetZoomPan(); });
+
+  function initPlaceholder() {
+    canvas.width = 600; canvas.height = 300;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#64748b'; ctx.font = '15px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Upload a photo to add watermark', canvas.width / 2, canvas.height / 2);
+  }
+
+  function getCoords(pos, cw, ch, ww, wh, pad) {
+    let x, y;
+    if (pos.includes('left')) x = pad;
+    else if (pos.includes('right')) x = cw - ww - pad;
+    else x = (cw / 2) - (ww / 2);
+
+    if (pos.includes('top')) y = pad;
+    else if (pos.includes('bottom')) y = ch - wh - pad;
+    else y = (ch / 2) - (wh / 2);
+
+    return [x, y];
+  }
+
+  function processImage() {
+    if (!currentBaseImg) return;
+
+    valSize.textContent = sizeInput.value + '%';
+    valOpacity.textContent = opacityInput.value + '%';
+
+    const maxDim = 1500; 
+    let w = currentBaseImg.width;
+    let h = currentBaseImg.height;
+    
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else { w = Math.round((w * maxDim) / h); h = maxDim; }
+    }
+
+    canvas.width = w; canvas.height = h;
+
+    // 1. Draw Base Image
+    ctx.drawImage(currentBaseImg, 0, 0, w, h);
+
+    const mode = typeSelect.value;
+    const position = posSelect.value;
+    const opacity = parseInt(opacityInput.value) / 100;
+    const sizePct = parseInt(sizeInput.value) / 100;
+    const padding = Math.max(20, Math.floor(w * 0.03)); // Padding dinamis 3% dari lebar
+
+    ctx.globalAlpha = opacity;
+
+    let drawX = 0, drawY = 0, wmWidth = 0, wmHeight = 0;
+
+    if (mode === 'text') {
+      const text = textInput.value.trim() || 'WATERMARK';
+      const font = fontSelect.value;
+      const color = colorInput.value;
+
+      // Kalkulasi ukuran font proporsional dengan tinggi gambar
+      const fontSize = Math.max(12, Math.floor(h * sizePct));
+      ctx.font = `bold ${fontSize}px "${font}", sans-serif`;
+      ctx.fillStyle = color;
+      ctx.textBaseline = 'top';
+
+      wmWidth = ctx.measureText(text).width;
+      wmHeight = fontSize; // Perkiraan kasar tinggi font
+
+      [drawX, drawY] = getCoords(position, w, h, wmWidth, wmHeight, padding);
+
+      // Tambahkan shadow halus agar teks selalu terbaca di background terang/gelap
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+
+      ctx.fillText(text, drawX, drawY);
+      
+      // Reset shadow
+      ctx.shadowColor = 'transparent';
+
+    } else if (mode === 'image' && currentLogoImg) {
+      // Skala logo proporsional dengan lebar gambar utama
+      const scale = (w * sizePct) / currentLogoImg.width;
+      wmWidth = currentLogoImg.width * scale;
+      wmHeight = currentLogoImg.height * scale;
+
+      [drawX, drawY] = getCoords(position, w, h, wmWidth, wmHeight, padding);
+
+      ctx.drawImage(currentLogoImg, drawX, drawY, wmWidth, wmHeight);
+    }
+
+    ctx.globalAlpha = 1.0; // Reset alpha
+  }
+
+  // File Upload Handlers
+  function handleImageUpload(e, callback) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => callback(img);
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  baseFileInput.addEventListener('change', (e) => {
+    handleImageUpload(e, (img) => {
+      currentBaseImg = img;
+      container.style.cursor = 'grab';
+      resetZoomPan();
+      processImage();
+    });
+  });
+
+  logoFileInput.addEventListener('change', (e) => {
+    handleImageUpload(e, (img) => {
+      currentLogoImg = img;
+      processImage();
+    });
+  });
+
+  // Attach event listeners to all controls
+  [posSelect, textInput, fontSelect, colorInput, sizeInput, opacityInput].forEach(input => {
+    input.addEventListener('input', processImage);
+    input.addEventListener('change', processImage);
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!currentBaseImg) { alert('Upload a photo first!'); return; }
+    const link = document.createElement('a');
+    link.download = 'watermarked-photo.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.9);
+    link.click();
+  });
+
+  initPlaceholder();
+})();
+</script>
+
+</body>
+</html>
