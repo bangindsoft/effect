@@ -91,7 +91,6 @@
       cursor: pointer;
     }
 
-    /* Bikin input watermark sedikit lebih lebar di grid */
     .span-2 {
       grid-column: span 2;
     }
@@ -104,7 +103,8 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-top: 18px; 
+      margin-top: 6px; 
+      margin-bottom: 6px;
     }
     
     .checkbox-item {
@@ -205,20 +205,25 @@
         <input type="color" id="bd-color" value="#ffffff">
       </div>
 
-      <div class="control-group span-2">
-        <label>4. Watermark Text</label>
-        <input type="text" id="bd-watermark" placeholder="e.g., Bali 2026 / By Mas Bro">
+      <div class="control-group">
+        <label>
+          <span>4. Splatter</span>
+          <span id="splatter-val">0%</span>
+        </label>
+        <!-- Nilai 0 = bersih/mati, semakin besar semakin banyak noise -->
+        <input type="range" id="bd-splatter" min="0" max="100" value="0">
       </div>
 
-      <div class="checkbox-group">
-        <div class="checkbox-item">
-          <input type="checkbox" id="bd-polaroid">
-          <label for="bd-polaroid" style="margin:0; font-size: 11px; text-transform: none;">Polaroid</label>
-        </div>
-        <div class="checkbox-item">
-          <input type="checkbox" id="bd-splatter">
-          <label for="bd-splatter" style="margin:0; font-size: 11px; text-transform: none;">Noise Splatter</label>
-        </div>
+      <div class="control-group span-2">
+        <label>5. Watermark Text</label>
+        <input type="text" id="bd-watermark" placeholder="e.g., Bali 2026 / By Mas Bro">
+      </div>
+    </div>
+
+    <div class="checkbox-group">
+      <div class="checkbox-item">
+        <input type="checkbox" id="bd-polaroid">
+        <label for="bd-polaroid" style="margin:0; font-size: 11px; text-transform: none; color: #cbd5e1; font-weight: normal;">Enable Polaroid Style</label>
       </div>
     </div>
 
@@ -243,9 +248,10 @@
   const sizeInput = document.getElementById('bd-size');
   const sizeValText = document.getElementById('size-val');
   const colorInput = document.getElementById('bd-color');
+  const splatterInput = document.getElementById('bd-splatter');
+  const splatterValText = document.getElementById('splatter-val');
   const watermarkInput = document.getElementById('bd-watermark');
   const polaroidToggle = document.getElementById('bd-polaroid');
-  const splatterToggle = document.getElementById('bd-splatter');
   const canvas = document.getElementById('bd-canvas');
   const container = document.getElementById('canvas-container');
   const ctx = canvas.getContext('2d');
@@ -253,7 +259,6 @@
 
   let currentImg = null;
 
-  // Variabel untuk Zoom & Pan
   let zoomLevel = 1;
   let isDragging = false;
   let startX, startY;
@@ -322,10 +327,12 @@
     ctx.fillText('Upload an image to create photo borders', canvas.width / 2, canvas.height / 2);
   }
 
-function processImage() {
+  function processImage() {
     if (!currentImg) return;
 
     sizeValText.textContent = sizeInput.value + '%';
+    const splatterVal = parseInt(splatterInput.value);
+    splatterValText.textContent = splatterVal + '%';
 
     const maxDim = 1200; 
     let w = currentImg.width;
@@ -339,7 +346,6 @@ function processImage() {
     const borderPct = parseFloat(sizeInput.value) / 100;
     const borderPx = Math.round(w * borderPct);
     
-    // Bottom border lebih tebal kalau Polaroid dicentang
     const bottomBorderPx = polaroidToggle.checked ? Math.round(borderPx * 3.8) : borderPx;
 
     canvas.width = w + (borderPx * 2);
@@ -349,10 +355,10 @@ function processImage() {
     ctx.fillStyle = colorInput.value;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Efek Noise Splatter (DIPINDAH KE SINI!)
-    // Tabur percikan di seluruh background sebelum foto ditempel
-    if (splatterToggle.checked) {
-      const splatterCount = Math.floor((canvas.width * canvas.height) / 450); 
+    // 2. Efek Noise Splatter berdasar persentase slider
+    if (splatterVal > 0) {
+      // Rumus kalkulasi kepadatan noise menyesuaikan slider
+      const splatterCount = Math.floor((canvas.width * canvas.height) * (splatterVal / 25000)); 
       for (let i = 0; i < splatterCount; i++) {
         const x = Math.random() * canvas.width;
         const y = Math.random() * canvas.height;
@@ -366,7 +372,6 @@ function processImage() {
     }
 
     // 3. Tempelkan Gambar Asli 
-    // Karena ditempel belakangan, foto ini akan menutupi noise yang ada di tengah
     ctx.drawImage(currentImg, borderPx, borderPx, w, h);
 
     // 4. Efek Watermark Text
@@ -398,7 +403,7 @@ function processImage() {
       ctx.fillText(wmText, canvas.width / 2, textY);
     }
   }
-  
+
   // Event Listeners Inputs
   fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -410,6 +415,8 @@ function processImage() {
         currentImg = img;
         container.style.cursor = 'grab';
         resetZoomPan();
+        // Set nilai default noise jadi 20% setiap kali gambar baru diupload
+        splatterInput.value = 20; 
         processImage();
       };
       img.src = event.target.result;
@@ -419,9 +426,9 @@ function processImage() {
 
   sizeInput.addEventListener('input', processImage);
   colorInput.addEventListener('input', processImage);
+  splatterInput.addEventListener('input', processImage);
   watermarkInput.addEventListener('input', processImage);
   polaroidToggle.addEventListener('change', processImage);
-  splatterToggle.addEventListener('change', processImage);
 
   downloadBtn.addEventListener('click', () => {
     if (!currentImg) {
