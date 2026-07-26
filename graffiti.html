@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Urban Graffiti Effect Pro</title>
+  <title>Urban Graffiti Text Generator Pro</title>
   <style>
     :root {
       --bg-main: #0f172a;
       --bg-card: #1e293b;
-      --accent: #0ea5e9; /* Ocean Blue */
+      --accent: #0ea5e9;
       --accent-hover: #0284c7;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
@@ -72,6 +72,7 @@
       color: var(--accent);
     }
 
+    .control-group input[type="text"],
     .control-group input[type="file"],
     .control-group input[type="range"],
     .control-group select {
@@ -82,6 +83,22 @@
       padding: 5px;
       border-radius: 4px;
       font-size: 11px;
+    }
+
+    .color-picker-wrapper {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .color-picker-wrapper input[type="color"] {
+      width: 40px;
+      height: 26px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      padding: 0;
+      cursor: pointer;
+      border-radius: 4px;
     }
 
     .span-2 { grid-column: span 2; }
@@ -149,51 +166,69 @@
 
 <div class="container">
   <div class="tool-box">
-    <h2 class="tool-title">Urban Graffiti Effect Pro</h2>
-    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Transform your photos into gritty, high-contrast street art graffiti styles instantly.</p>
+    <h2 class="tool-title">Urban Graffiti Text Generator Pro</h2>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Type your custom text and stamp it realistically onto any wall background photo.</p>
 
     <div class="controls-grid">
-      <!-- MAIN UPLOAD -->
+      <!-- INPUT TEXT -->
       <div class="control-group span-2">
-        <label>1. Upload Photo</label>
-        <input type="file" id="graffiti-base-file" accept="image/*">
+        <label>1. Your Graffiti Text</label>
+        <input type="text" id="gt-text" value="STREET ART" placeholder="Type text here...">
       </div>
       
+      <!-- BACKGROUND UPLOAD -->
       <div class="control-group">
-        <label>2. Spray Color Tone</label>
-        <select id="graffiti-style">
-          <option value="underground" selected>Underground Neon</option>
-          <option value="brick">Brick Wall Raw</option>
-          <option value="stencil">Classic Black Stencil</option>
+        <label>2. Upload Wall Background</label>
+        <input type="file" id="gt-bg-file" accept="image/*">
+      </div>
+
+      <!-- FONT STYLE -->
+      <div class="control-group">
+        <label>Graffiti Font Style</label>
+        <select id="gt-font">
+          <option value="Impact, sans-serif" selected>Heavy Urban (Impact)</option>
+          <option value="Arial Black, sans-serif">Bold Stencil</option>
+          <option value="Courier New, monospace">Raw Typewriter</option>
+          <option value="Verdana, sans-serif">Modern Street</option>
         </select>
+      </div>
+
+      <!-- SPRAY COLOR -->
+      <div class="control-group">
+        <label>Spray Paint Color</label>
+        <div class="color-picker-wrapper">
+          <input type="color" id="gt-color" value="#00ffcc">
+          <select id="gt-preset-color" style="flex:1;">
+            <option value="custom">Custom Color</option>
+            <option value="#00ffcc" selected>Neon Cyan</option>
+            <option value="#ff0055>">Hot Pink</option>
+            <option value="#ffff00">Toxic Yellow</option>
+            <option value="#ffffff">Pure White</option>
+          </select>
+        </div>
       </div>
 
       <!-- SLIDERS -->
       <div class="control-group">
-        <label><span>Contrast Boost</span> <span id="val-contrast">60</span></label>
-        <input type="range" id="graffiti-contrast" min="10" max="100" value="60">
+        <label><span>Text Size</span> <span id="val-size">65</span></label>
+        <input type="range" id="gt-size" min="30" max="150" value="65">
       </div>
 
       <div class="control-group">
-        <label><span>Grit / Noise Texture</span> <span id="val-grit">35</span></label>
-        <input type="range" id="graffiti-grit" min="0" max="80" value="35">
-      </div>
-
-      <div class="control-group">
-        <label><span>Threshold Level</span> <span id="val-thresh">120</span></label>
-        <input type="range" id="graffiti-thresh" min="60" max="200" value="120">
+        <label><span>Spray Opacity</span> <span id="val-opacity">90%</span></label>
+        <input type="range" id="gt-opacity" min="30" max="100" value="90">
       </div>
     </div>
 
     <div class="canvas-container" id="canvas-container">
-      <canvas id="graffiti-canvas"></canvas>
+      <canvas id="gt-canvas"></canvas>
     </div>
 
     <div class="footer-actions">
       <div class="hint-text">
         💡 <b>Tips:</b> Scroll to Zoom Canvas | Click & Drag to Move | Dbl-Click to Reset View
       </div>
-      <button id="graffiti-download-btn" class="btn-download">Save Photo (JPEG)</button>
+      <button id="gt-download-btn" class="btn-download">Save Wallpaper (JPEG)</button>
     </div>
     
     <p class="privacy-note">🔒 Privacy Protected: Your photos never leave your device.</p>
@@ -202,22 +237,23 @@
 
 <script>
 (function() {
-  const baseFileInput = document.getElementById('graffiti-base-file');
-  const styleSelect = document.getElementById('graffiti-style');
-  const contrastInput = document.getElementById('graffiti-contrast');
-  const gritInput = document.getElementById('graffiti-grit');
-  const threshInput = document.getElementById('graffiti-thresh');
-  
-  const valContrast = document.getElementById('val-contrast');
-  const valGrit = document.getElementById('val-grit');
-  const valThresh = document.getElementById('val-thresh');
+  const textInput = document.getElementById('gt-text');
+  const bgFileInput = document.getElementById('gt-bg-file');
+  const fontSelect = document.getElementById('gt-font');
+  const colorInput = document.getElementById('gt-color');
+  const presetColorSelect = document.getElementById('gt-preset-color');
+  const sizeInput = document.getElementById('gt-size');
+  const opacityInput = document.getElementById('gt-opacity');
 
-  const canvas = document.getElementById('graffiti-canvas');
+  const valSize = document.getElementById('val-size');
+  const valOpacity = document.getElementById('val-opacity');
+
+  const canvas = document.getElementById('gt-canvas');
   const container = document.getElementById('canvas-container');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const downloadBtn = document.getElementById('graffiti-download-btn');
+  const downloadBtn = document.getElementById('gt-download-btn');
 
-  let currentBaseImg = null;
+  let currentBgImg = null;
   let processingId = null;
 
   // Zoom & Pan Mechanics
@@ -228,7 +264,7 @@
   function updateTransform() { canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`; }
 
   container.addEventListener('wheel', (e) => {
-    if (!currentBaseImg) return;
+    if (!currentBgImg && !textInput.value) return;
     e.preventDefault();
     zoomLevel += e.deltaY < 0 ? 0.15 : -0.15;
     zoomLevel = Math.max(0.5, Math.min(zoomLevel, 6));
@@ -236,134 +272,134 @@
   }, { passive: false });
 
   container.addEventListener('mousedown', (e) => {
-    if (!currentBaseImg) return;
     isDragging = true;
     startX = e.clientX - translateX; startY = e.clientY - translateY;
     container.style.cursor = 'grabbing';
   });
-  container.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
-  container.addEventListener('mouseleave', () => { isDragging = false; container.style.cursor = currentBaseImg ? 'grab' : 'default'; });
+  container.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = 'grab'; });
+  container.addEventListener('mouseleave', () => { isDragging = false; container.style.cursor = 'grab'; });
   container.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
     e.preventDefault();
     translateX = e.clientX - startX; translateY = e.clientY - startY;
     updateTransform();
   });
-  container.addEventListener('dblclick', () => { if (currentBaseImg) resetZoomPan(); });
+  container.addEventListener('dblclick', () => { resetZoomPan(); });
 
   function initPlaceholder() {
     canvas.width = 600; canvas.height = 300;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#64748b'; ctx.font = '15px sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('Upload a photo to create Urban Graffiti Effect', canvas.width / 2, canvas.height / 2);
+    // Background default gelap ala tembok malam
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Tampilkan preview teks graffiti default
+    drawGraffitiText(canvas.width, canvas.height);
   }
 
-  function pseudoRandom(seed) {
-    const x = Math.sin(seed++) * 10000;
-    return x - Math.floor(x);
-  }
+  function drawGraffitiText(w, h) {
+    valSize.textContent = sizeInput.value;
+    valOpacity.textContent = opacityInput.value + '%';
 
-  function processImage() {
-    if (!currentBaseImg) return;
-
-    valContrast.textContent = contrastInput.value;
-    valGrit.textContent = gritInput.value;
-    valThresh.textContent = threshInput.value;
-
-    const maxDim = 800; 
-    let w = currentBaseImg.width;
-    let h = currentBaseImg.height;
-    
-    if (w > maxDim || h > maxDim) {
-      if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-      else { w = Math.round((w * maxDim) / h); h = maxDim; }
-    }
-
-    canvas.width = w; canvas.height = h;
-    ctx.drawImage(currentBaseImg, 0, 0, w, h);
-    
-    const imgData = ctx.getImageData(0, 0, w, h);
-    const pixels = imgData.data;
-
-    const contrast = parseInt(contrastInput.value) * 1.5;
-    const gritAmount = parseInt(gritInput.value);
-    const threshold = parseInt(threshInput.value);
-    const style = styleSelect.value;
-
-    const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-
-    for (let i = 0; i < pixels.length; i += 4) {
-      let r = pixels[i];
-      let g = pixels[i + 1];
-      let b = pixels[i + 2];
-
-      // Konversi Grayscale & Kontras Ekstrem (Stencil Base)
-      let gray = 0.299 * r + 0.587 * g + 0.114 * b;
-      gray = factor * (gray - 128) + 128;
-      gray = Math.min(255, Math.max(0, gray));
-
-      // Tambahkan efek grit / noise acak tekstur dinding
-      if (gritAmount > 0) {
-        const noise = (pseudoRandom(i * 7.1) - 0.5) * (gritAmount * 2.5);
-        gray = Math.min(255, Math.max(0, gray + noise));
-      }
-
-      // Thresholding gaya Stencil / Poster
-      const isDark = gray < threshold;
-
-      if (style === 'stencil') {
-        // Hitam putih bersih ala stensil jalanan
-        const val = isDark ? 15 : 240;
-        pixels[i] = pixels[i + 1] = pixels[i + 2] = val;
-      } else if (style === 'brick') {
-        // Nuansa dinding bata hangat kecoklatan/merah tua
-        if (isDark) {
-          pixels[i] = 30; pixels[i + 1] = 10; pixels[i + 2] = 10;
-        } else {
-          pixels[i] = 210; pixels[i + 1] = 140; pixels[i + 2] = 110;
-        }
-      } else {
-        // Underground Neon (Kontras magenta & cyan / ungu gelap)
-        if (isDark) {
-          pixels[i] = 20; pixels[i + 1] = 10; pixels[i + 2] = 40;
-        } else {
-          pixels[i] = 240; pixels[i + 1] = 90; pixels[i + 2] = 180;
-        }
+    if (currentBgImg) {
+      ctx.drawImage(currentBgImg, 0, 0, w, h);
+    } else {
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, w, h);
+      // Pola tekstur tipis grid tembok
+      ctx.strokeStyle = '#1f293d';
+      ctx.lineWidth = 1;
+      for(let i=0; i<w; i+=30) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
       }
     }
 
-    ctx.putImageData(imgData, 0, 0);
+    const text = textInput.value || 'GRAFFITI';
+    const fontSize = parseInt(sizeInput.value);
+    const fontStyle = fontSelect.value;
+    const sprayColor = colorInput.value;
+    const opacity = parseInt(opacityInput.value) / 100;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.font = `900 ${fontSize}px ${fontStyle}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const centerX = w / 2;
+    const centerY = h / 2;
+
+    // 1. Efek Semprotan Kaleng Bayangan Belakang (Glow / Overspray Hitam)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillText(text, centerX + 4, centerY + 4);
+
+    // 2. Lapisan Tetesan Cat / Semprot Utama
+    ctx.fillStyle = sprayColor;
+    ctx.fillText(text, centerX, centerY);
+
+    // 3. Efek Highlight Tepi Teks (Gaya Stencil/Spray Putih Tipis)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.strokeText(text, centerX, centerY);
+
+    ctx.restore();
   }
 
-  baseFileInput.addEventListener('change', (e) => {
+  function processCanvas() {
+    let w = 800, h = 450;
+    if (currentBgImg) {
+      const maxDim = 900;
+      w = currentBgImg.width;
+      h = currentBgImg.height;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+        else { w = Math.round((w * maxDim) / h); h = maxDim; }
+      }
+    }
+    canvas.width = w;
+    canvas.height = h;
+    drawGraffitiText(w, h);
+  }
+
+  bgFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        currentBaseImg = img;
+        currentBgImg = img;
         container.style.cursor = 'grab';
         resetZoomPan();
-        processImage();
+        processCanvas();
       };
       img.src = event.target.result;
     };
     reader.readAsDataURL(file);
   });
 
-  [styleSelect, contrastInput, gritInput, threshInput].forEach(element => {
+  presetColorSelect.addEventListener('change', (e) => {
+    if (e.target.value !== 'custom') {
+      colorInput.value = e.target.value;
+      processCanvas();
+    }
+  });
+
+  colorInput.addEventListener('input', () => {
+    presetColorSelect.value = 'custom';
+    processCanvas();
+  });
+
+  [textInput, fontSelect, sizeInput, opacityInput].forEach(element => {
     element.addEventListener('input', () => {
       clearTimeout(processingId);
-      processingId = setTimeout(processImage, 50);
+      processingId = setTimeout(processCanvas, 50);
     });
   });
 
   downloadBtn.addEventListener('click', () => {
-    if (!currentBaseImg) { alert('Please upload a photo first!'); return; }
     const link = document.createElement('a');
-    link.download = 'urban-graffiti-photo.jpg';
+    link.download = 'graffiti-text-art.jpg';
     link.href = canvas.toDataURL('image/jpeg', 0.9);
     link.click();
   });
