@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Sheet Generator Pro</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px;
+    }
+
+    .tool-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    .tool-title {
+      margin: 0 0 4px 0;
+      color: var(--accent);
+      font-size: 1.3rem;
+      text-align: center;
+    }
+    
+    .desc {
+      font-size: 11px; color: var(--text-muted); text-align: center; margin: 0 0 12px 0;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .control-group input[type="range"],
+    .control-group select {
+      width: 100%;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: 5px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .color-picker-wrapper {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .color-picker-wrapper input[type="color"] {
+      width: 100%;
+      height: 28px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      padding: 0;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .btn-folder {
+      background: #334155;
+      color: #fff;
+      border: 1px dashed var(--accent);
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      width: 100%;
+      text-align: center;
+      display: inline-block;
+      transition: all 0.2s ease;
+    }
+    .btn-folder:hover { background: #475569; }
+
+    /* Sembunyikan input file asli */
+    input[type="file"] { display: none; }
+
+    .span-2 { grid-column: span 2; }
+    
+    @media (max-width: 600px) {
+      .span-2 { grid-column: span 1; }
+    }
+
+    .canvas-container {
+      width: 100%;
+      background: repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 50% / 20px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      min-height: 200px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      overflow: auto;
+      max-height: 450px;
+    }
+
+    canvas {
+      max-width: 100%;
+      height: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+    .btn-download:hover { background: var(--accent-hover); }
+    .btn-download:disabled { background: #475569; cursor: not-allowed; }
+
+    .status-text { font-size: 11px; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Contact Sheet Generator Pro</h2>
+    <p class="desc">Create a beautiful photo grid from a folder instantly. 100% secure, processed locally.</p>
+
+    <div class="controls-grid">
+      <!-- FOLDER SELECT -->
+      <div class="control-group span-2">
+        <label>1. Select Folder containing Photos</label>
+        <label for="folder-input" class="btn-folder" id="btn-folder-label">📁 Choose Folder...</label>
+        <input type="file" id="folder-input" webkitdirectory directory multiple accept="image/*">
+      </div>
+
+      <!-- COLUMNS -->
+      <div class="control-group">
+        <label><span>Columns</span> <span id="val-cols">4</span></label>
+        <input type="range" id="cs-cols" min="2" max="12" value="4">
+      </div>
+
+      <!-- SPACING -->
+      <div class="control-group">
+        <label><span>Gap / Spacing</span> <span id="val-gap">20px</span></label>
+        <input type="range" id="cs-gap" min="0" max="100" value="20">
+      </div>
+
+      <!-- CORNER RADIUS -->
+      <div class="control-group">
+        <label><span>Corner Radius</span> <span id="val-radius">10px</span></label>
+        <input type="range" id="cs-radius" min="0" max="150" value="10">
+      </div>
+
+      <!-- BG COLOR -->
+      <div class="control-group">
+        <label>Background Color</label>
+        <div class="color-picker-wrapper">
+          <input type="color" id="cs-color" value="#ffffff">
+        </div>
+      </div>
+
+      <!-- CROP MODE -->
+      <div class="control-group">
+        <label>Photo Fit Mode</label>
+        <select id="cs-mode">
+          <option value="cover" selected>Crop (Fill Square)</option>
+          <option value="contain">Fit (Show Whole Photo)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <div id="placeholder-text" style="color: var(--text-muted); font-size: 13px;">
+        Preview will appear here after selecting a folder.
+      </div>
+      <canvas id="cs-canvas" style="display: none;"></canvas>
+    </div>
+
+    <div class="action-row">
+      <div class="status-text" id="status-text">Images loaded: 0</div>
+      <button id="btn-download" class="btn-download" disabled>Download Contact Sheet</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const folderInput = document.getElementById('folder-input');
+  const btnFolderLabel = document.getElementById('btn-folder-label');
+  
+  const colsInput = document.getElementById('cs-cols');
+  const gapInput = document.getElementById('cs-gap');
+  const radiusInput = document.getElementById('cs-radius');
+  const colorInput = document.getElementById('cs-color');
+  const modeInput = document.getElementById('cs-mode');
+
+  const valCols = document.getElementById('val-cols');
+  const valGap = document.getElementById('val-gap');
+  const valRadius = document.getElementById('val-radius');
+
+  const canvas = document.getElementById('cs-canvas');
+  const ctx = canvas.getContext('2d');
+  const placeholder = document.getElementById('placeholder-text');
+  const statusText = document.getElementById('status-text');
+  const downloadBtn = document.getElementById('btn-download');
+
+  let imageObjects = []; // Menyimpan objek Image yang sudah di-load
+  let renderTimer = null;
+
+  // Render ulang setiap ada perubahan slider/warna
+  [colsInput, gapInput, radiusInput, colorInput, modeInput].forEach(el => {
+    el.addEventListener('input', () => {
+      valCols.textContent = colsInput.value;
+      valGap.textContent = gapInput.value + 'px';
+      valRadius.textContent = radiusInput.value + 'px';
+      
+      clearTimeout(renderTimer);
+      renderTimer = setTimeout(drawContactSheet, 150); // debounce ringan
+    });
+  });
+
+  // Saat user memilih folder
+  folderInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
+    
+    if (files.length === 0) {
+      alert("No images found in the selected folder.");
+      return;
+    }
+
+    btnFolderLabel.textContent = `📁 Loading ${files.length} images...`;
+    placeholder.textContent = "Loading images... Please wait.";
+    placeholder.style.display = "block";
+    canvas.style.display = "none";
+    downloadBtn.disabled = true;
+    
+    imageObjects = [];
+    
+    // Load semua gambar ke dalam memory browser (URL.createObjectURL)
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      
+      await new Promise((resolve) => {
+        img.onload = () => {
+          imageObjects.push(img);
+          statusText.textContent = `Processing image ${i + 1} of ${files.length}...`;
+          resolve();
+        };
+        img.onerror = () => resolve(); // Skip kalau file rusak
+      });
+    }
+
+    btnFolderLabel.textContent = `📁 Folder Selected (${imageObjects.length} imgs)`;
+    statusText.textContent = `Images loaded: ${imageObjects.length}. Generating layout...`;
+    
+    drawContactSheet();
+  });
+
+  function drawContactSheet() {
+    if (imageObjects.length === 0) return;
+
+    placeholder.style.display = "none";
+    canvas.style.display = "block";
+    downloadBtn.disabled = false;
+
+    const cols = parseInt(colsInput.value);
+    const gap = parseInt(gapInput.value);
+    const radius = parseInt(radiusInput.value);
+    const bgColor = colorInput.value;
+    const mode = modeInput.value;
+
+    // Resolusi dasar tinggi supaya hasil downloadnya tajam (kualitas cetak/4K)
+    const canvasWidth = 2480; // Lebar standard A4 @ 300dpi / 4K
+    const availableWidth = canvasWidth - (gap * (cols + 1));
+    const cellSize = availableWidth / cols;
+    
+    const rows = Math.ceil(imageObjects.length / cols);
+    const canvasHeight = (cellSize * rows) + (gap * (rows + 1));
+
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    // Isi Background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // Looping untuk menggambar setiap foto
+    for (let i = 0; i < imageObjects.length; i++) {
+      const img = imageObjects[i];
+      
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      
+      const x = gap + (col * (cellSize + gap));
+      const y = gap + (row * (cellSize + gap));
+
+      ctx.save();
+      
+      // Radius melengkung (Clip)
+      ctx.beginPath();
+      // Menggunakan fallback sederhana jika roundRect tidak support di browser lama, 
+      // tapi mayoritas browser modern sudah support.
+      if (ctx.roundRect) {
+        ctx.roundRect(x, y, cellSize, cellSize, radius);
+      } else {
+        ctx.rect(x, y, cellSize, cellSize); 
+      }
+      ctx.clip();
+
+      if (mode === 'cover') {
+        // Mode CROP (Isi penuh kotak, potongan tengah)
+        const scale = Math.max(cellSize / img.width, cellSize / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const dx = x + (cellSize - w) / 2;
+        const dy = y + (cellSize - h) / 2;
+        ctx.drawImage(img, dx, dy, w, h);
+      } else {
+        // Mode CONTAIN (Tampilkan seluruh foto tanpa terpotong, background kotak mengikuti warna background)
+        const scale = Math.min(cellSize / img.width, cellSize / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const dx = x + (cellSize - w) / 2;
+        const dy = y + (cellSize - h) / 2;
+        ctx.drawImage(img, dx, dy, w, h);
+      }
+
+      ctx.restore();
+    }
+    statusText.textContent = `Ready! Contact sheet layout: ${cols}x${rows}`;
+  }
+
+  downloadBtn.addEventListener('click', () => {
+    if (imageObjects.length === 0) return;
+    const link = document.createElement('a');
+    link.download = 'Contact_Sheet_Pro.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.9);
+    link.click();
+  });
+})();
+</script>
+
+</body>
+</html>
