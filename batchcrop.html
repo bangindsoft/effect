@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Batch Image Cropper Pro</title>
+  <title>Batch Image Cropper Pro (ZIP Version)</title>
+  <!-- Load JSZip Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  
   <style>
     :root {
       --bg-main: #0f172a;
@@ -14,6 +17,7 @@
       --text-muted: #94a3b8;
       --border: #334155;
       --success: #10b981;
+      --warning: #f59e0b;
     }
 
     * { box-sizing: border-box; }
@@ -23,7 +27,6 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--bg-main);
       color: var(--text-main);
@@ -33,7 +36,7 @@
       width: 100%;
       max-width: 800px;
       margin: 0 auto;
-      padding: 8px;
+      padding: 10px;
     }
 
     .tool-box {
@@ -46,7 +49,7 @@
     }
 
     .tool-title {
-      margin: 0 0 2px 0;
+      margin: 0 0 4px 0;
       color: var(--accent);
       font-size: 1.2rem;
     }
@@ -67,7 +70,7 @@
       font-weight: bold;
       display: flex;
       justify-content: space-between;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--accent);
@@ -78,7 +81,7 @@
       background: #0f172a;
       color: #fff;
       border: 1px solid var(--border);
-      padding: 7px;
+      padding: 8px;
       border-radius: 4px;
       font-size: 12px;
     }
@@ -87,7 +90,7 @@
       background: #334155;
       color: #fff;
       border: 1px dashed var(--accent);
-      padding: 8px 12px;
+      padding: 10px 12px;
       border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
@@ -98,9 +101,11 @@
       display: inline-block;
     }
     .btn-folder:hover { background: #475569; }
+    
+    input[type="file"] { display: none; }
 
     .action-row {
-      margin-top: 12px;
+      margin-top: 14px;
       display: flex;
       gap: 10px;
       justify-content: center;
@@ -111,12 +116,14 @@
       background: var(--accent);
       color: #fff;
       border: none;
-      padding: 10px 24px;
+      padding: 12px 24px;
       border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
       font-size: 13px;
       transition: all 0.2s ease;
+      width: 100%;
+      max-width: 300px;
     }
     .btn-process:hover { background: var(--accent-hover); }
     .btn-process:disabled { background: #475569; cursor: not-allowed; }
@@ -127,7 +134,7 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 10px;
-      max-height: 140px;
+      height: 150px;
       overflow-y: auto;
       text-align: left;
       font-size: 11px;
@@ -135,8 +142,10 @@
       color: var(--text-muted);
     }
 
+    .status-box div { margin-bottom: 3px; border-bottom: 1px solid #1e293b; padding-bottom: 3px; }
     .status-box .success { color: var(--success); }
     .status-box .error { color: #f43f5e; }
+    .status-box .highlight { color: var(--warning); font-weight: bold; }
 
     .info-summary {
       display: flex;
@@ -144,9 +153,10 @@
       font-size: 11px;
       color: var(--text-muted);
       margin-top: 8px;
+      padding: 0 5px;
     }
 
-    .privacy-note { font-size: 10px; color: var(--text-muted); margin-top: 10px; margin-bottom: 0; }
+    .privacy-note { font-size: 10px; color: var(--text-muted); margin-top: 12px; margin-bottom: 0; }
   </style>
 </head>
 <body>
@@ -154,13 +164,14 @@
 <div class="container">
   <div class="tool-box">
     <h2 class="tool-title">Batch Image Cropper Pro</h2>
-    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Crop multiple photos in a folder automatically to your preferred aspect ratio.</p>
+    <p style="font-size: 11px; color: var(--text-muted); margin: 0;">Crop multiple photos automatically and download them as a single ZIP file.</p>
 
     <div class="controls-grid">
       <!-- SELECT FOLDER -->
       <div class="control-group">
         <label>1. Select Source Folder</label>
-        <button type="button" id="btn-select-dir" class="btn-folder">📁 Choose Folder...</button>
+        <label for="folder-input" class="btn-folder" id="btn-folder-label">📁 Choose Folder...</label>
+        <input type="file" id="folder-input" webkitdirectory directory multiple accept="image/*">
       </div>
 
       <!-- CROP RATIO -->
@@ -177,32 +188,34 @@
     </div>
 
     <div class="info-summary">
-      <span id="source-info">Source Folder: Not selected</span>
+      <span id="source-info">Source: Not selected</span>
       <span id="files-count">Found: 0 images</span>
     </div>
 
     <div class="action-row">
-      <button id="btn-start" class="btn-process" disabled>Start Batch Crop & Save</button>
+      <button id="btn-start" class="btn-process" disabled>Start Crop & Download ZIP</button>
     </div>
 
     <div class="status-box" id="status-log">
-      <div>System ready. Please select a folder containing images to begin.</div>
+      <div>System ready. Please select a folder containing images.</div>
+      <div style="color: #0ea5e9;">Note: Your original files are 100% safe. This tool only reads the files and generates a new ZIP file.</div>
     </div>
     
-    <p class="privacy-note">🔒 100% Client-Side: Processed locally in your browser. Files are saved directly to your disk.</p>
+    <p class="privacy-note">🔒 100% Secure: Processed locally in your browser. No files are uploaded to any server.</p>
   </div>
 </div>
 
 <script>
 (function() {
-  const btnSelectDir = document.getElementById('btn-select-dir');
+  const folderInput = document.getElementById('folder-input');
+  const btnFolderLabel = document.getElementById('btn-folder-label');
   const cropRatioSelect = document.getElementById('crop-ratio');
   const btnStart = document.getElementById('btn-start');
+  
   const sourceInfo = document.getElementById('source-info');
   const filesCount = document.getElementById('files-count');
   const statusLog = document.getElementById('status-log');
 
-  let dirHandle = null;
   let imageFiles = [];
 
   function logMessage(text, type = 'normal') {
@@ -210,64 +223,41 @@
     div.textContent = text;
     if (type === 'success') div.className = 'success';
     if (type === 'error') div.className = 'error';
+    if (type === 'highlight') div.className = 'highlight';
     statusLog.appendChild(div);
     statusLog.scrollTop = statusLog.scrollHeight;
   }
 
-  // Pilih Folder Sumber
-  btnSelectDir.addEventListener('click', async () => {
-    try {
-      if (!window.showDirectoryPicker) {
-        alert('Your browser does not support Directory Picker API. Please use Google Chrome or Microsoft Edge desktop.');
-        return;
-      }
-
-      dirHandle = await window.showDirectoryPicker();
-      imageFiles = [];
+  // Handle Folder Selection
+  folderInput.addEventListener('change', (e) => {
+    imageFiles = Array.from(e.target.files).filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      // Ambil nama folder dari path file pertama
+      const folderPath = imageFiles[0].webkitRelativePath;
+      const folderName = folderPath.split('/')[0] || "Selected Folder";
       
-      sourceInfo.textContent = `Source: ${dirHandle.name}`;
-      logMessage(`Opened folder: "${dirHandle.name}". Scanning for images...`);
-
-      for await (const entry of dirHandle.values()) {
-        if (entry.kind === 'file') {
-          const name = entry.name.toLowerCase();
-          if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') || name.endsWith('.webp')) {
-            imageFiles.push(entry);
-          }
-        }
-      }
-
+      sourceInfo.textContent = `Source: ${folderName}`;
       filesCount.textContent = `Found: ${imageFiles.length} images`;
-      if (imageFiles.length > 0) {
-        logMessage(`Found ${imageFiles.length} compatible images ready for cropping.`, 'success');
-        btnStart.disabled = false;
-      } else {
-        logMessage('No image files (.jpg, .png, .webp) found in this folder.', 'error');
-        btnStart.disabled = true;
-      }
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        logMessage(`Error opening folder: ${err.message}`, 'error');
-      }
+      btnFolderLabel.textContent = `📁 Reselect Folder...`;
+      
+      logMessage(`Loaded ${imageFiles.length} images from "${folderName}". Ready to process.`, 'success');
+      btnStart.disabled = false;
+    } else {
+      sourceInfo.textContent = `Source: Not selected`;
+      filesCount.textContent = `Found: 0 images`;
+      logMessage('No valid images found in the selected folder.', 'error');
+      btnStart.disabled = true;
     }
   });
 
-  // Proses Crop Batch
+  // Handle Batch Crop and ZIP Generation
   btnStart.addEventListener('click', async () => {
-    if (!dirHandle || imageFiles.length === 0) return;
+    if (imageFiles.length === 0) return;
 
     btnStart.disabled = true;
-    btnSelectDir.disabled = true;
-    logMessage('--- Starting Batch Cropping Process ---');
-
-    // Buat subfolder hasil crop di dalam folder yang sama jika diizinkan, atau simpan langsung
-    let targetDirHandle = dirHandle;
-    try {
-      targetDirHandle = await dirHandle.getDirectoryHandle('Cropped_Images', { create: true });
-      logMessage('Created output subfolder: /Cropped_Images', 'success');
-    } catch (e) {
-      logMessage('Saving cropped files directly into selected folder.');
-    }
+    btnStart.textContent = 'Processing... Please wait';
+    logMessage('--- Starting Batch Crop Process ---', 'highlight');
 
     const ratioVal = cropRatioSelect.value;
     let targetAspect = 1;
@@ -276,87 +266,87 @@
     if (ratioVal === '4:3') targetAspect = 4 / 3;
     if (ratioVal === '3:2') targetAspect = 3 / 2;
 
+    const zip = new JSZip();
+    const folder = zip.folder("Cropped_Images");
     let successCount = 0;
 
     for (let i = 0; i < imageFiles.length; i++) {
-      const fileEntry = imageFiles[i];
+      const file = imageFiles[i];
       try {
-        const file = await fileEntry.getFile();
         const imgUrl = URL.createObjectURL(file);
-
-        await new Promise((resolve, reject) => {
+        
+        const blob = await new Promise((resolve, reject) => {
           const img = new Image();
-          img.onload = async () => {
-            try {
-              let srcW = img.width;
-              let srcH = img.height;
-              let srcAspect = srcW / srcH;
+          img.onload = () => {
+            let srcW = img.width;
+            let srcH = img.height;
+            let srcAspect = srcW / srcH;
 
-              let cropW = srcW;
-              let cropH = srcH;
-              let startX = 0;
-              let startY = 0;
+            let cropW = srcW;
+            let cropH = srcH;
+            let startX = 0;
+            let startY = 0;
 
-              // Hitung kotak crop di tengah (Center Crop)
-              if (srcAspect > targetAspect) {
-                // Lebar kepanjangan, potong bagian kiri & kanan
-                cropW = srcH * targetAspect;
-                startX = (srcW - cropW) / 2;
-              } else {
-                // Tinggi kepanjangan, potong bagian atas & bawah
-                cropH = srcW / targetAspect;
-                startY = (srcH - cropH) / 2;
-              }
-
-              // Buat Canvas untuk merender hasil crop
-              const canvas = document.createElement('canvas');
-              canvas.width = Math.round(cropW);
-              canvas.height = Math.round(cropH);
-              const ctx = canvas.getContext('2d');
-
-              ctx.drawImage(img, startX, startY, cropW, cropH, 0, 0, canvas.width, canvas.height);
-
-              // Konversi ke Blob JPEG
-              canvas.toBlob(async (blob) => {
-                if (!blob) {
-                  logMessage(`Failed to process: ${file.name}`, 'error');
-                  resolve();
-                  return;
-                }
-
-                // Simpan file hasil crop ke disk
-                const newFileName = `cropped_${file.name}`;
-                const writableFile = await targetDirHandle.getFileHandle(newFileName, { create: true });
-                const writable = await writableFile.createWritable();
-                await writable.write(blob);
-                await writable.close();
-
-                successCount++;
-                logMessage(`[${successCount}/${imageFiles.length}] Cropped & Saved: ${newFileName}`, 'success');
-                URL.revokeObjectURL(imgUrl);
-                resolve();
-              }, 'image/jpeg', 0.92);
-
-            } catch (err) {
-              logMessage(`Error processing ${file.name}: ${err.message}`, 'error');
-              resolve();
+            // Center Crop Calculation
+            if (srcAspect > targetAspect) {
+              cropW = srcH * targetAspect;
+              startX = (srcW - cropW) / 2;
+            } else {
+              cropH = srcW / targetAspect;
+              startY = (srcH - cropH) / 2;
             }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(cropW);
+            canvas.height = Math.round(cropH);
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(img, startX, startY, cropW, cropH, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob((b) => {
+              URL.revokeObjectURL(imgUrl);
+              resolve(b);
+            }, 'image/jpeg', 0.92);
           };
           img.onerror = () => {
-            logMessage(`Failed to load image: ${file.name}`, 'error');
-            resolve();
+            URL.revokeObjectURL(imgUrl);
+            resolve(null);
           };
           img.src = imgUrl;
         });
 
+        if (blob) {
+          const newFileName = `cropped_${file.name}`;
+          folder.file(newFileName, blob);
+          successCount++;
+          logMessage(`[${successCount}/${imageFiles.length}] Cropped: ${file.name}`);
+        } else {
+          logMessage(`Failed to process: ${file.name}`, 'error');
+        }
       } catch (err) {
-        logMessage(`File access error on ${fileEntry.name}: ${err.message}`, 'error');
+        logMessage(`Error on ${file.name}: ${err.message}`, 'error');
       }
     }
 
-    logMessage('--- Batch Cropping Completed Successfully! ---', 'success');
-    btnStart.disabled = false;
-    btnSelectDir.disabled = false;
+    logMessage('--- Zipping Files... Do not close window ---', 'highlight');
+    btnStart.textContent = 'Generating ZIP file...';
+
+    // Generate ZIP file
+    zip.generateAsync({ type: "blob" }).then(function(content) {
+      logMessage('--- Complete! Downloading ZIP ---', 'success');
+      
+      // Trigger Download
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = `Cropped_Images_Batch.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Reset Button
+      btnStart.disabled = false;
+      btnStart.textContent = 'Start Crop & Download ZIP';
+    });
   });
 })();
 </script>
