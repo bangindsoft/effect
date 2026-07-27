@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rubik's Cube Mosaic Generator</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px;
+    }
+
+    .tool-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    .tool-title {
+      margin: 0 0 4px 0;
+      color: var(--accent);
+      font-size: 1.3rem;
+      text-align: center;
+    }
+    
+    .desc {
+      font-size: 11px; color: var(--text-muted); text-align: center; margin: 0 0 12px 0;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .control-group input[type="range"] {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .btn-upload {
+      background: #334155;
+      color: #fff;
+      border: 1px dashed var(--accent);
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      width: 100%;
+      text-align: center;
+      display: inline-block;
+      transition: all 0.2s ease;
+    }
+    .btn-upload:hover { background: #475569; }
+    input[type="file"] { display: none; }
+
+    .span-2 { grid-column: span 2; }
+    
+    @media (max-width: 600px) {
+      .span-2 { grid-column: span 1; }
+    }
+
+    .canvas-container {
+      width: 100%;
+      background: #111;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      min-height: 250px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      overflow: auto;
+      max-height: 500px;
+    }
+
+    canvas {
+      max-width: 100%;
+      height: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      background: #000;
+    }
+
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+    .btn-download:hover { background: var(--accent-hover); }
+    .btn-download:disabled { background: #475569; cursor: not-allowed; }
+
+    .status-text { font-size: 11px; color: #cbd5e1; }
+    .palette-preview { display: flex; gap: 4px; margin-top: 4px; }
+    .color-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #000; }
+
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Rubik's Cube Mosaic Generator</h2>
+    <p class="desc">Turn any photo into a masterpiece made entirely of Rubik's Cubes (using the 6 official colors).</p>
+
+    <div class="controls-grid">
+      <!-- UPLOAD -->
+      <div class="control-group span-2">
+        <label>1. Upload Photo</label>
+        <label for="image-upload" class="btn-upload" id="btn-upload-label">📸 Select Image...</label>
+        <input type="file" id="image-upload" accept="image/*">
+      </div>
+
+      <!-- CUBES WIDTH -->
+      <div class="control-group">
+        <label><span>Grid Width (Cubes)</span> <span id="val-cubes">30</span></label>
+        <input type="range" id="rm-cubes" min="10" max="100" value="30">
+      </div>
+
+      <!-- BRIGHTNESS BOOST (Because Rubik colors are dark) -->
+      <div class="control-group">
+        <label><span>Pre-Brightness</span> <span id="val-bright">10%</span></label>
+        <input type="range" id="rm-bright" min="-50" max="100" value="10">
+      </div>
+      
+      <!-- PALETTE PREVIEW -->
+      <div class="control-group span-2">
+        <label>Official Rubik's Palette</label>
+        <div class="palette-preview">
+          <div class="color-swatch" style="background: #ffffff;"></div> <!-- White -->
+          <div class="color-swatch" style="background: #ffd500;"></div> <!-- Yellow -->
+          <div class="color-swatch" style="background: #b90000;"></div> <!-- Red -->
+          <div class="color-swatch" style="background: #ff5900;"></div> <!-- Orange -->
+          <div class="color-swatch" style="background: #0045ad;"></div> <!-- Blue -->
+          <div class="color-swatch" style="background: #009b48;"></div> <!-- Green -->
+        </div>
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <div id="placeholder-text" style="color: var(--text-muted); font-size: 13px;">
+        Upload a photo to see the mosaic preview.
+      </div>
+      <canvas id="rm-canvas" style="display: none;"></canvas>
+    </div>
+
+    <div class="action-row">
+      <div class="status-text" id="status-text">Cubes needed: 0</div>
+      <button id="btn-download" class="btn-download" disabled>Download Mosaic</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const imageUpload = document.getElementById('image-upload');
+  const btnUploadLabel = document.getElementById('btn-upload-label');
+  const cubesInput = document.getElementById('rm-cubes');
+  const brightInput = document.getElementById('rm-bright');
+  const valCubes = document.getElementById('val-cubes');
+  const valBright = document.getElementById('val-bright');
+  
+  const canvas = document.getElementById('rm-canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const placeholder = document.getElementById('placeholder-text');
+  const statusText = document.getElementById('status-text');
+  const downloadBtn = document.getElementById('btn-download');
+
+  let currentImage = null;
+  let renderTimer = null;
+
+  // Standar warna Rubik Asli
+  const rubikPalette = [
+    { r: 255, g: 255, b: 255 }, // Putih
+    { r: 255, g: 213, b: 0 },   // Kuning
+    { r: 185, g: 0, b: 0 },     // Merah
+    { r: 255, g: 89, b: 0 },    // Oranye
+    { r: 0, g: 69, b: 173 },    // Biru
+    { r: 0, g: 155, b: 72 }     // Hijau
+  ];
+
+  // Rumus mencari warna terdekat (Euclidean Distance di ruang RGB)
+  function getClosestRubikColor(r, g, b) {
+    let minDistance = Infinity;
+    let closestColor = rubikPalette[0];
+
+    for (let i = 0; i < rubikPalette.length; i++) {
+      const color = rubikPalette[i];
+      const distance = Math.pow(color.r - r, 2) + Math.pow(color.g - g, 2) + Math.pow(color.b - b, 2);
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestColor = color;
+      }
+    }
+    return `rgb(${closestColor.r}, ${closestColor.g}, ${closestColor.b})`;
+  }
+
+  // Trigger Render Saat Slider Berubah
+  [cubesInput, brightInput].forEach(el => {
+    el.addEventListener('input', () => {
+      valCubes.textContent = cubesInput.value;
+      valBright.textContent = brightInput.value + '%';
+      if(currentImage) {
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(generateMosaic, 100);
+      }
+    });
+  });
+
+  // Handle Upload Foto
+  imageUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    btnUploadLabel.textContent = `📸 ${file.name.substring(0, 15)}...`;
+    placeholder.textContent = "Processing mosaic...";
+    
+    const img = new Image();
+    img.onload = () => {
+      currentImage = img;
+      generateMosaic();
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  function generateMosaic() {
+    if (!currentImage) return;
+
+    placeholder.style.display = "none";
+    canvas.style.display = "block";
+    downloadBtn.disabled = false;
+
+    // 1. Setup Ukuran Grid
+    const cubesWide = parseInt(cubesInput.value); // Jumlah rubik menyamping
+    const squaresX = cubesWide * 3; // 1 rubik = 3 kotak
+    
+    // Hitung proporsi tinggi
+    const imgRatio = currentImage.height / currentImage.width;
+    const cubesTall = Math.floor(cubesWide * imgRatio);
+    const squaresY = cubesTall * 3;
+
+    // 2. Buat Canvas Sementara (Hidden) untuk mengambil piksel gambar asli yang diperkecil
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = squaresX;
+    tempCanvas.height = squaresY;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // Taruh gambar di canvas kecil
+    tempCtx.drawImage(currentImage, 0, 0, squaresX, squaresY);
+    
+    // Ambil data pikselnya
+    const imgData = tempCtx.getImageData(0, 0, squaresX, squaresY);
+    const data = imgData.data;
+
+    // 3. Setup Canvas Utama (Hasil)
+    const squareSize = 12; // Ukuran 1 kotak warna (dalam pixel hasil download)
+    canvas.width = squaresX * squareSize;
+    canvas.height = squaresY * squareSize;
+    
+    // Background hitam pekat
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const brightnessOffset = parseInt(brightInput.value);
+
+    // 4. Looping untuk menggambar setiap kotak warna stiker Rubik
+    for (let y = 0; y < squaresY; y++) {
+      for (let x = 0; x < squaresX; x++) {
+        const i = (y * squaresX + x) * 4;
+        
+        // Ambil warna asli + brightness
+        let r = data[i] + brightnessOffset;
+        let g = data[i+1] + brightnessOffset;
+        let b = data[i+2] + brightnessOffset;
+        
+        // Batasi nilai RGB 0-255
+        r = Math.min(255, Math.max(0, r));
+        g = Math.min(255, Math.max(0, g));
+        b = Math.min(255, Math.max(0, b));
+
+        // Dapatkan warna Rubik terdekat
+        const finalColor = getClosestRubikColor(r, g, b);
+
+        // Hitung posisi di kanvas utama
+        const drawX = x * squareSize;
+        const drawY = y * squareSize;
+
+        // Gambar stiker warna (dikecilkan sedikit supaya ada garis border hitam antar stiker)
+        ctx.fillStyle = finalColor;
+        ctx.fillRect(drawX + 1, drawY + 1, squareSize - 2, squareSize - 2);
+        
+        // Gambar efek kilap pinggiran stiker tipis (opsional, bikin terlihat 3D)
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(drawX + 1, drawY + 1, squareSize - 2, 2); // Kilap atas
+        ctx.fillRect(drawX + 1, drawY + 1, 2, squareSize - 2); // Kilap kiri
+      }
+    }
+
+    // 5. Gambar Grid Pemisah antar Kubik Rubik (Tebal setiap kelipatan 3)
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+    
+    // Garis Vertikal
+    for (let x = 0; x <= squaresX; x += 3) {
+      ctx.beginPath();
+      ctx.moveTo(x * squareSize, 0);
+      ctx.lineTo(x * squareSize, canvas.height);
+      ctx.stroke();
+    }
+    
+    // Garis Horisontal
+    for (let y = 0; y <= squaresY; y += 3) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * squareSize);
+      ctx.lineTo(canvas.width, y * squareSize);
+      ctx.stroke();
+    }
+
+    // Update Status
+    const totalCubes = cubesWide * cubesTall;
+    statusText.textContent = `Size: ${cubesWide}x${cubesTall} Cubes. Total: ${totalCubes.toLocaleString()} Rubik's Cubes needed!`;
+  }
+
+  // Handle Download
+  downloadBtn.addEventListener('click', () => {
+    if (!currentImage) return;
+    const link = document.createElement('a');
+    link.download = 'rubiks_cube_mosaic.jpg';
+    // Gunakan kualitas maksimum
+    link.href = canvas.toDataURL('image/jpeg', 1.0);
+    link.click();
+  });
+
+})();
+</script>
+
+</body>
+</html>
