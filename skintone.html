@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Skin Tone Adjuster</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 10px;
+    }
+
+    .tool-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    .tool-title {
+      margin: 0 0 4px 0;
+      color: var(--accent);
+      font-size: 1.3rem;
+      text-align: center;
+    }
+    
+    .desc { font-size: 11px; color: var(--text-muted); text-align: center; margin: 0 0 12px 0; }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .slider-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .slider-wrapper span { font-size: 11px; font-weight: bold; }
+
+    input[type="range"] {
+      flex: 1;
+      height: 6px;
+      background: #334155;
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    .btn-upload {
+      background: #334155;
+      color: #fff;
+      border: 1px dashed var(--accent);
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      width: 100%;
+      text-align: center;
+      display: inline-block;
+      transition: all 0.2s ease;
+    }
+    .btn-upload:hover { background: #475569; }
+    input[type="file"] { display: none; }
+
+    .canvas-container {
+      width: 100%;
+      background: repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%) 50% / 20px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      min-height: 250px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    canvas { max-width: 100%; height: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+    .btn-download:hover { background: var(--accent-hover); }
+    .btn-download:disabled { background: #475569; cursor: not-allowed; }
+    
+    .status-text { font-size: 11px; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Smart Skin Tone Adjuster</h2>
+    <p class="desc">Instantly whiten or tan skin tones using Auto-Hue Detection. No manual masking required.</p>
+
+    <div class="controls-grid">
+      <div class="control-group">
+        <label for="image-upload" class="btn-upload" id="btn-upload-label">📸 Select Photo (Portrait/Selfie)...</label>
+        <input type="file" id="image-upload" accept="image/*">
+      </div>
+
+      <div class="control-group">
+        <label><span>Skin Tone Adjustment</span> <span id="val-tone">0 (Original)</span></label>
+        <div class="slider-wrapper">
+          <span>Darker</span>
+          <input type="range" id="tone-slider" min="-50" max="50" value="0" disabled>
+          <span>Lighter</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <div id="placeholder-text" style="color: var(--text-muted); font-size: 13px;">
+        Upload a photo to start adjusting.
+      </div>
+      <canvas id="canvas" style="display: none;"></canvas>
+    </div>
+
+    <div class="action-row">
+      <div class="status-text" id="status-text">AI Status: Waiting for image...</div>
+      <button id="btn-download" class="btn-download" disabled>Download Image</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const imageUpload = document.getElementById('image-upload');
+  const btnUploadLabel = document.getElementById('btn-upload-label');
+  const toneSlider = document.getElementById('tone-slider');
+  const valTone = document.getElementById('val-tone');
+  
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const placeholder = document.getElementById('placeholder-text');
+  const statusText = document.getElementById('status-text');
+  const downloadBtn = document.getElementById('btn-download');
+
+  let currentImage = null;
+  let originalImageData = null;
+  let renderTimer = null;
+
+  // HSL & RGB Conversion Math
+  function rgbToHsl(r, g, b) {
+    r /= 255, g /= 255, b /= 255;
+    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if(max == min) {
+      h = s = 0;
+    } else {
+      let d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch(max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return [h, s, l];
+  }
+
+  function hslToRgb(h, s, l) {
+    let r, g, b;
+    if(s == 0) {
+      r = g = b = l;
+    } else {
+      let hue2rgb = function hue2rgb(p, q, t) {
+        if(t < 0) t += 1;
+        if(t > 1) t -= 1;
+        if(t < 1/6) return p + (q - p) * 6 * t;
+        if(t < 1/2) return q;
+        if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      }
+      let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      let p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }
+
+  // Handle Upload
+  imageUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    btnUploadLabel.textContent = `📸 Loaded: ${file.name.substring(0, 15)}...`;
+    placeholder.style.display = "none";
+    canvas.style.display = "block";
+    statusText.textContent = "Analyzing skin tones...";
+    
+    const img = new Image();
+    img.onload = () => {
+      // Batasi ukuran maksimal canvas agar tidak lemot (maks 1500px)
+      const MAX_WIDTH = 1500;
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > MAX_WIDTH) {
+        height = Math.round(height * (MAX_WIDTH / width));
+        width = MAX_WIDTH;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Simpan piksel original ke memori
+      originalImageData = ctx.getImageData(0, 0, width, height);
+      
+      toneSlider.disabled = false;
+      toneSlider.value = 0;
+      valTone.textContent = "0 (Original)";
+      downloadBtn.disabled = false;
+      statusText.textContent = "Ready. Adjust the slider!";
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  // Slider Event (Debounced supaya tidak lag)
+  toneSlider.addEventListener('input', () => {
+    let val = toneSlider.value;
+    valTone.textContent = val > 0 ? `+${val} (Whiten)` : val < 0 ? `${val} (Darken)` : "0 (Original)";
+    
+    if(!originalImageData) return;
+    
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => {
+      applySkinFilter(parseInt(val));
+    }, 50);
+  });
+
+  function applySkinFilter(adjustmentValue) {
+    statusText.textContent = "Processing filter...";
+    
+    // Copy data original ke data baru yang akan diedit
+    const newImgData = new ImageData(
+      new Uint8ClampedArray(originalImageData.data),
+      originalImageData.width,
+      originalImageData.height
+    );
+    const data = newImgData.data;
+    
+    const amount = adjustmentValue / 100; // -0.5 to 0.5
+    
+    for (let i = 0; i < data.length; i += 4) {
+      let r = data[i], g = data[i+1], b = data[i+2];
+      
+      // Konversi pixel ke HSL untuk mendeteksi warna
+      let [h, s, l] = rgbToHsl(r, g, b);
+      let hueDegree = h * 360;
+
+      // Logika deteksi kulit manusia (Spektrum Oranye - Merah hangat: sekitar Hue 0-45 & 330-360)
+      let isSkinTone = false;
+      let weight = 0;
+
+      if (hueDegree >= 0 && hueDegree <= 50) {
+        // Puncak kulit di hue 20
+        weight = 1 - (Math.abs(hueDegree - 20) / 30);
+      } else if (hueDegree >= 330) {
+        weight = 1 - (Math.abs(hueDegree - 360) / 30);
+      }
+
+      weight = Math.max(0, weight);
+
+      // Jangan aplikasikan ke warna abu-abu/hitam/putih murni (saturation & lightness filter)
+      if (weight > 0 && s > 0.15 && l > 0.1 && l < 0.9) {
+        // Naikkan/Turunkan Lightness
+        let newL = l + (amount * weight * 0.4); // 0.4 adalah faktor kelembutan
+        newL = Math.max(0, Math.min(1, newL)); // Jaga agar tidak bocor (0-1)
+
+        // Kembalikan ke RGB
+        let [newR, newG, newB] = hslToRgb(h, s, newL);
+        data[i] = newR;
+        data[i+1] = newG;
+        data[i+2] = newB;
+      }
+    }
+
+    // Terapkan hasil edit ke canvas
+    ctx.putImageData(newImgData, 0, 0);
+    statusText.textContent = "Render complete.";
+  }
+
+  // Handle Download
+  downloadBtn.addEventListener('click', () => {
+    if (!originalImageData) return;
+    const link = document.createElement('a');
+    link.download = 'Retouched_Photo.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+  });
+
+})();
+</script>
+
+</body>
+</html>
