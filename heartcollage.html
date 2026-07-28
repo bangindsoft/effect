@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heart-Shaped Photo Collage Generator</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #ec4899; /* Pink Heart Accent */
+      --accent-hover: #db2777;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px;
+    }
+
+    .tool-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    .tool-title {
+      margin: 0 0 4px 0;
+      color: var(--accent);
+      font-size: 1.3rem;
+      text-align: center;
+    }
+    
+    .desc { font-size: 11px; color: var(--text-muted); text-align: center; margin: 0 0 12px 0; }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      background: var(--bg-card);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    input[type="range"], select {
+      width: 100%;
+      height: 32px;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0 8px;
+      outline: none;
+    }
+
+    input[type="range"] {
+      height: 6px;
+      background: #334155;
+      margin-top: 10px;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    .btn-upload {
+      background: #334155;
+      color: #fff;
+      border: 1px dashed var(--accent);
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      width: 100%;
+      text-align: center;
+      display: block;
+      transition: all 0.2s ease;
+      grid-column: 1 / -1;
+    }
+    .btn-upload:hover { background: #475569; }
+    input[type="file"] { display: none; }
+
+    .canvas-container {
+      width: 100%;
+      background: #111;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 480px; /* Menjaga agar tombol download tidak terdorong keluar */
+      width: auto;
+      height: auto;
+      aspect-ratio: 1/1;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      border-radius: 4px;
+    }
+
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      gap: 10px;
+    }
+
+    .btn-action {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+    .btn-action:hover { background: var(--accent-hover); }
+    .btn-action:disabled { background: #475569; cursor: not-allowed; }
+    .btn-secondary { background: #334155; }
+    .btn-secondary:hover { background: #475569; }
+
+    .status-text { font-size: 11px; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">Heart Photo Collage Generator</h2>
+    <p class="desc">Upload your photos to automatically arrange them into a beautiful heart shape.</p>
+
+    <div class="controls-grid">
+      <label for="image-upload" class="btn-upload" id="btn-upload-label">📸 Select Photos (Upload Multiple)...</label>
+      <input type="file" id="image-upload" accept="image/*" multiple>
+
+      <div class="control-group">
+        <label><span>Tile Gap</span> <span id="val-gap">4px</span></label>
+        <input type="range" id="hc-gap" min="0" max="12" value="4">
+      </div>
+
+      <div class="control-group">
+        <label><span>Corner Radius</span> <span id="val-radius">6px</span></label>
+        <input type="range" id="hc-radius" min="0" max="20" value="6">
+      </div>
+
+      <div class="control-group">
+        <label><span>Background Color</span></label>
+        <select id="hc-bg">
+          <option value="#0f172a">Dark Slate</option>
+          <option value="#000000">Pure Black</option>
+          <option value="#ffffff">Pure White</option>
+          <option value="#fce7f3">Soft Pink</option>
+          <option value="#881337">Deep Red</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <div id="placeholder-text" style="color: var(--text-muted); font-size: 13px; padding: 100px 0;">
+        Upload 1 or more photos to generate your heart collage.
+      </div>
+      <canvas id="hc-canvas" style="display: none;"></canvas>
+    </div>
+
+    <div class="action-row">
+      <button id="btn-shuffle" class="btn-action btn-secondary" disabled>🔀 Shuffle Photos</button>
+      <div class="status-text" id="status-text">Grid slots: 63 photos</div>
+      <button id="btn-download" class="btn-action" disabled>Download Collage</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const imageUpload = document.getElementById('image-upload');
+  const btnUploadLabel = document.getElementById('btn-upload-label');
+  const gapInput = document.getElementById('hc-gap');
+  const radiusInput = document.getElementById('hc-radius');
+  const bgInput = document.getElementById('hc-bg');
+  
+  const valGap = document.getElementById('val-gap');
+  const valRadius = document.getElementById('val-radius');
+  
+  const canvas = document.getElementById('hc-canvas');
+  const ctx = canvas.getContext('2d');
+  const placeholder = document.getElementById('placeholder-text');
+  const statusText = document.getElementById('status-text');
+  const downloadBtn = document.getElementById('btn-download');
+  const shuffleBtn = document.getElementById('btn-shuffle');
+
+  let uploadedImages = [];
+
+  // Matrix pola bentuk Hati (11 kolom x 9 baris = 63 slot foto)
+  const heartMatrix = [
+    [0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0],
+    [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+    [0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+    [0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
+    [0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]
+  ];
+
+  const CANVAS_SIZE = 1200; // Resolusi Tinggi Output
+  canvas.width = CANVAS_SIZE;
+  canvas.height = CANVAS_SIZE;
+
+  // Handle Upload Foto
+  imageUpload.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    btnUploadLabel.textContent = `📸 Loaded ${files.length} Photo(s)`;
+    uploadedImages = [];
+
+    let loadedCount = 0;
+    files.forEach(file => {
+      const img = new Image();
+      img.onload = () => {
+        uploadedImages.push(img);
+        loadedCount++;
+        if (loadedCount === files.length) {
+          placeholder.style.display = "none";
+          canvas.style.display = "block";
+          downloadBtn.disabled = false;
+          shuffleBtn.disabled = false;
+          renderHeartCollage();
+        }
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  });
+
+  // Listener Kontrol
+  [gapInput, radiusInput, bgInput].forEach(el => {
+    el.addEventListener('input', () => {
+      valGap.textContent = gapInput.value + 'px';
+      valRadius.textContent = radiusInput.value + 'px';
+      if (uploadedImages.length > 0) renderHeartCollage();
+    });
+  });
+
+  // Shuffle foto
+  shuffleBtn.addEventListener('click', () => {
+    for (let i = uploadedImages.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [uploadedImages[i], uploadedImages[j]] = [uploadedImages[j], uploadedImages[i]];
+    }
+    renderHeartCollage();
+  });
+
+  function drawRoundedRect(ctx, x, y, width, height, radius) {
+    if (radius <= 0) {
+      ctx.rect(x, y, width, height);
+      return;
+    }
+    radius = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+
+  function renderHeartCollage() {
+    if (!uploadedImages.length) return;
+
+    const cols = 11;
+    const rows = 9;
+    const gap = parseInt(gapInput.value) * 2; // Skala gap ke resolusi canvas
+    const cornerRadius = parseInt(radiusInput.value) * 2;
+
+    // Hitung ukuran setiap petak foto
+    const tileSize = (CANVAS_SIZE - (cols + 1) * gap) / cols;
+    
+    // Posisi offset Y untuk menyeimbangkan letak hati di tengah canvas
+    const totalGridHeight = rows * tileSize + (rows - 1) * gap;
+    const offsetY = (CANVAS_SIZE - totalGridHeight) / 2;
+
+    // Set Background
+    ctx.fillStyle = bgInput.value;
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    let imgIndex = 0;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (heartMatrix[r][c] === 1) {
+          const x = gap + c * (tileSize + gap);
+          const y = offsetY + r * (tileSize + gap);
+
+          // Ambil gambar (berulang secara otomatis jika jumlah foto yang diunggah < 63)
+          const img = uploadedImages[imgIndex % uploadedImages.length];
+
+          ctx.save();
+          drawRoundedRect(ctx, x, y, tileSize, tileSize, cornerRadius);
+          ctx.clip();
+
+          // Logika Crop Center (Object-fit Cover)
+          const imgAspect = img.width / img.height;
+          let drawWidth, drawHeight, offsetX, offsetYImg;
+
+          if (imgAspect > 1) {
+            drawHeight = tileSize;
+            drawWidth = tileSize * imgAspect;
+            offsetX = x - (drawWidth - tileSize) / 2;
+            offsetYImg = y;
+          } else {
+            drawWidth = tileSize;
+            drawHeight = tileSize / imgAspect;
+            offsetX = x;
+            offsetYImg = y - (drawHeight - tileSize) / 2;
+          }
+
+          ctx.drawImage(img, offsetX, offsetYImg, drawWidth, drawHeight);
+          ctx.restore();
+
+          imgIndex++;
+        }
+      }
+    }
+
+    statusText.textContent = `Grid filled with ${uploadedImages.length} photo(s)`;
+  }
+
+  // Download Image
+  downloadBtn.addEventListener('click', () => {
+    if (!uploadedImages.length) return;
+    const link = document.createElement('a');
+    link.download = 'Heart_Photo_Collage.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+  });
+
+})();
+</script>
+
+</body>
+</html>
