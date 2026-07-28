@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diamond & Polygon Photo Collage Generator</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 8px;
+    }
+
+    .tool-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    .tool-title {
+      margin: 0 0 2px 0;
+      color: var(--accent);
+      font-size: 1.25rem;
+      text-align: center;
+      font-weight: 700;
+    }
+    
+    .desc { font-size: 11px; color: var(--text-muted); text-align: center; margin: 0 0 10px 0; }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .control-group label {
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    select, input[type="color"] {
+      width: 100%;
+      height: 30px;
+      background: #0f172a;
+      color: #fff;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0 6px;
+      outline: none;
+      font-size: 11px;
+    }
+
+    input[type="color"] {
+      padding: 2px;
+      cursor: pointer;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: #334155;
+      margin-top: 8px;
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    .btn-upload {
+      background: #334155;
+      color: #fff;
+      border: 1px dashed var(--accent);
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      width: 100%;
+      text-align: center;
+      display: block;
+      transition: all 0.2s ease;
+      grid-column: 1 / -1;
+    }
+    .btn-upload:hover { background: #475569; }
+    input[type="file"] { display: none; }
+
+    .canvas-container {
+      width: 100%;
+      background: #111;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 360px;
+      width: auto;
+      height: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      border-radius: 4px;
+    }
+
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      gap: 10px;
+    }
+
+    .btn-action {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+    .btn-action:hover { background: var(--accent-hover); color: #fff; }
+    .btn-action:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; }
+    .btn-secondary { background: #334155; color: #fff; }
+    .btn-secondary:hover { background: #475569; }
+
+    .status-text { font-size: 11px; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="tool-box">
+    <h2 class="tool-title">◆ Diamond & Polygon Collage Generator</h2>
+    <p class="desc">Buat kolase foto bentuk Diamond, Rhombus, dan Polygon 4-Sisi secara otomatis.</p>
+
+    <div class="controls-grid">
+      <label for="image-upload" class="btn-upload" id="btn-upload-label">📸 Pilih / Unggah Foto (Bisa Banyak)...</label>
+      <input type="file" id="image-upload" accept="image/*" multiple>
+
+      <div class="control-group">
+        <label><span>Layout Diamond</span></label>
+        <select id="gc-preset">
+          <option value="classic-diamond" selected>Classic Diamond (5 Foto)</option>
+          <option value="4-diagonal">4-Diagonal Polygon (4 Foto)</option>
+          <option value="diamond-cross">Diamond Cross (5 Foto)</option>
+          <option value="rhombus-lattice">Rhombus Lattice Grid (9 Foto)</option>
+          <option value="inner-outer">Double Diamond (2 Foto)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label><span>Rasio Kanvas</span></label>
+        <select id="gc-aspect">
+          <option value="1:1" selected>1:1 (Persegi - Feed)</option>
+          <option value="4:5">4:5 (Instagram Portrait)</option>
+          <option value="9:16">9:16 (Story / Reel)</option>
+          <option value="16:9">16:9 (Landscape)</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label><span>Jarak Sela (Gap)</span> <span id="val-gap">8px</span></label>
+        <input type="range" id="gc-gap" min="0" max="30" value="8">
+      </div>
+
+      <div class="control-group">
+        <label><span>Margin Luar</span> <span id="val-margin">12px</span></label>
+        <input type="range" id="gc-margin" min="0" max="40" value="12">
+      </div>
+
+      <div class="control-group">
+        <label><span>Skala Diamond Center</span> <span id="val-scale">100%</span></label>
+        <input type="range" id="gc-scale" min="60" max="140" value="100">
+      </div>
+
+      <div class="control-group">
+        <label><span>Warna Latar / Border</span></label>
+        <input type="color" id="gc-bg" value="#ffffff">
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-container">
+      <div id="placeholder-text" style="color: var(--text-muted); font-size: 13px; padding: 80px 0;">
+        Unggah foto untuk membuat kolase diamond.
+      </div>
+      <canvas id="gc-canvas" style="display: none;"></canvas>
+    </div>
+
+    <div class="action-row">
+      <button id="btn-shuffle" class="btn-action btn-secondary" disabled>🔀 Acak Posisi Foto</button>
+      <div class="status-text" id="status-text">Siap</div>
+      <button id="btn-download" class="btn-action" disabled>Unduh Hasil Kolase</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const imageUpload = document.getElementById('image-upload');
+  const btnUploadLabel = document.getElementById('btn-upload-label');
+  
+  const presetSelect = document.getElementById('gc-preset');
+  const aspectSelect = document.getElementById('gc-aspect');
+  const gapInput = document.getElementById('gc-gap');
+  const marginInput = document.getElementById('gc-margin');
+  const scaleInput = document.getElementById('gc-scale');
+  const bgInput = document.getElementById('gc-bg');
+  
+  const valGap = document.getElementById('val-gap');
+  const valMargin = document.getElementById('val-margin');
+  const valScale = document.getElementById('val-scale');
+  
+  const canvas = document.getElementById('gc-canvas');
+  const ctx = canvas.getContext('2d');
+  const placeholder = document.getElementById('placeholder-text');
+  const statusText = document.getElementById('status-text');
+  const downloadBtn = document.getElementById('btn-download');
+  const shuffleBtn = document.getElementById('btn-shuffle');
+
+  let uploadedImages = [];
+
+  imageUpload.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    btnUploadLabel.textContent = `📸 Terisi ${files.length} Foto`;
+    uploadedImages = [];
+
+    let loadedCount = 0;
+    files.forEach(file => {
+      const img = new Image();
+      img.onload = () => {
+        uploadedImages.push(img);
+        loadedCount++;
+        if (loadedCount === files.length) {
+          placeholder.style.display = "none";
+          canvas.style.display = "block";
+          downloadBtn.disabled = false;
+          shuffleBtn.disabled = false;
+          renderDiamondCollage();
+        }
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  });
+
+  [presetSelect, aspectSelect, gapInput, marginInput, scaleInput, bgInput].forEach(el => {
+    el.addEventListener('input', () => {
+      valGap.textContent = gapInput.value + 'px';
+      valMargin.textContent = marginInput.value + 'px';
+      valScale.textContent = scaleInput.value + '%';
+      if (uploadedImages.length > 0) renderDiamondCollage();
+    });
+  });
+
+  shuffleBtn.addEventListener('click', () => {
+    for (let i = uploadedImages.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [uploadedImages[i], uploadedImages[j]] = [uploadedImages[j], uploadedImages[i]];
+    }
+    renderDiamondCollage();
+  });
+
+  function getLayoutPolygons(preset, scaleFactor) {
+    const s = (scaleFactor / 100);
+    
+    if (preset === 'classic-diamond') {
+      const dTop = 0.5 - 0.38 * s;
+      const dBtm = 0.5 + 0.38 * s;
+      const dLft = 0.5 - 0.38 * s;
+      const dRgt = 0.5 + 0.38 * s;
+
+      return [
+        { pts: [[0.5, dTop], [dRgt, 0.5], [0.5, dBtm], [dLft, 0.5]], cx: 0.5, cy: 0.5 },
+        { pts: [[0, 0], [0.5, 0], [0.5, dTop], [dLft, 0.5], [0, 0.5]], cx: 0.22, cy: 0.22 },
+        { pts: [[0.5, 0], [1, 0], [1, 0.5], [dRgt, 0.5], [0.5, dTop]], cx: 0.78, cy: 0.22 },
+        { pts: [[dRgt, 0.5], [1, 0.5], [1, 1], [0.5, 1], [0.5, dBtm]], cx: 0.78, cy: 0.78 },
+        { pts: [[0, 0.5], [dLft, 0.5], [0.5, dBtm], [0.5, 1], [0, 1]], cx: 0.22, cy: 0.78 }
+      ];
+    } 
+    else if (preset === '4-diagonal') {
+      return [
+        { pts: [[0, 0], [1, 0], [0.5, 0.5]], cx: 0.5, cy: 0.2 },
+        { pts: [[1, 0], [1, 1], [0.5, 0.5]], cx: 0.8, cy: 0.5 },
+        { pts: [[1, 1], [0, 1], [0.5, 0.5]], cx: 0.5, cy: 0.8 },
+        { pts: [[0, 1], [0, 0], [0.5, 0.5]], cx: 0.2, cy: 0.5 }
+      ];
+    }
+    else if (preset === 'diamond-cross') {
+      return [
+        { pts: [[0.5, 0.1], [0.9, 0.5], [0.5, 0.9], [0.1, 0.5]], cx: 0.5, cy: 0.5 },
+        { pts: [[0.5, 0], [0.75, 0.25], [0.5, 0.5], [0.25, 0.25]], cx: 0.5, cy: 0.25 },
+        { pts: [[0.75, 0.25], [1, 0.5], [0.75, 0.75], [0.5, 0.5]], cx: 0.75, cy: 0.5 },
+        { pts: [[0.5, 0.5], [0.75, 0.75], [0.5, 1], [0.25, 0.75]], cx: 0.5, cy: 0.75 },
+        { pts: [[0.25, 0.25], [0.5, 0.5], [0.25, 0.75], [0, 0.5]], cx: 0.25, cy: 0.5 }
+      ];
+    }
+    else if (preset === 'rhombus-lattice') {
+      const list = [];
+      const step = 0.333;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const cx = (c + 0.5) * step;
+          const cy = (r + 0.5) * step;
+          const rx = step / 2;
+          const ry = step / 2;
+          list.push({
+            pts: [[cx, cy - ry], [cx + rx, cy], [cx, cy + ry], [cx - rx, cy]],
+            cx: cx,
+            cy: cy
+          });
+        }
+      }
+      return list;
+    }
+    else if (preset === 'inner-outer') {
+      return [
+        { pts: [[0.5, 0.05], [0.95, 0.5], [0.5, 0.95], [0.05, 0.5]], cx: 0.5, cy: 0.5 },
+        { pts: [[0,0],[1,0],[1,1],[0,1]], cx: 0.1, cy: 0.1 }
+      ];
+    }
+
+    return [];
+  }
+
+  function renderDiamondCollage() {
+    if (!uploadedImages.length) return;
+
+    const aspectRatioStr = aspectSelect.value;
+    let canvasW = 1200;
+    let canvasH = 1200;
+
+    if (aspectRatioStr === '4:5') {
+      canvasW = 1200; canvasH = 1500;
+    } else if (aspectRatioStr === '9:16') {
+      canvasW = 1080; canvasH = 1920;
+    } else if (aspectRatioStr === '16:9') {
+      canvasW = 1920; canvasH = 1080;
+    }
+
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+
+    ctx.fillStyle = bgInput.value;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    const scaleFactor = parseInt(scaleInput.value);
+    const polygons = getLayoutPolygons(presetSelect.value, scaleFactor);
+    
+    const scale = canvasW / 1000;
+    const margin = parseInt(marginInput.value) * scale * 2;
+    const gap = parseInt(gapInput.value) * scale * 2;
+
+    const availW = canvasW - (margin * 2);
+    const availH = canvasH - (margin * 2);
+
+    polygons.forEach((poly, index) => {
+      const img = uploadedImages[index % uploadedImages.length];
+
+      let rawPoints = poly.pts.map(p => ({
+        x: margin + p[0] * availW,
+        y: margin + p[1] * availH
+      }));
+
+      const centerPt = {
+        x: margin + poly.cx * availW,
+        y: margin + poly.cy * availH
+      };
+
+      let finalPoints = rawPoints;
+      if (gap > 0) {
+        finalPoints = rawPoints.map(pt => {
+          const dx = pt.x - centerPt.x;
+          const dy = pt.y - centerPt.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist === 0) return pt;
+          const newDist = Math.max(0, dist - gap / 2);
+          const ratio = newDist / dist;
+          return {
+            x: centerPt.x + dx * ratio,
+            y: centerPt.y + dy * ratio
+          };
+        });
+      }
+
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      finalPoints.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      });
+
+      const boxW = maxX - minX;
+      const boxH = maxY - minY;
+
+      if (boxW <= 0 || boxH <= 0) return;
+
+      ctx.save();
+      ctx.beginPath();
+      finalPoints.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.clip();
+
+      const imgAspect = img.width / img.height;
+      const boxAspect = boxW / boxH;
+      let drawW, drawH, drawX, drawY;
+
+      if (imgAspect > boxAspect) {
+        drawH = boxH;
+        drawW = boxH * imgAspect;
+        drawX = minX - (drawW - boxW) / 2;
+        drawY = minY;
+      } else {
+        drawW = boxW;
+        drawH = boxW / imgAspect;
+        drawX = minX;
+        drawY = minY - (drawH - boxH) / 2;
+      }
+
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+      ctx.restore();
+    });
+
+    statusText.textContent = `Slot Diamond: ${polygons.length} | Total Foto: ${uploadedImages.length}`;
+  }
+
+  downloadBtn.addEventListener('click', () => {
+    if (!uploadedImages.length) return;
+    const link = document.createElement('a');
+    link.download = 'Diamond_Polygon_Collage.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+  });
+
+})();
+</script>
+
+</body>
+</html>
