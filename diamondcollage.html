@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -179,27 +179,27 @@
 <div class="container">
   <div class="tool-box">
     <h2 class="tool-title">◆ Diamond & Polygon Collage Generator</h2>
-    <p class="desc">Buat kolase foto bentuk Diamond, Rhombus, dan Polygon 4-Sisi secara otomatis.</p>
+    <p class="desc">Create diamond, rhombus, and 4-sided polygon photo collages instantly.</p>
 
     <div class="controls-grid">
-      <label for="image-upload" class="btn-upload" id="btn-upload-label">📸 Pilih / Unggah Foto (Bisa Banyak)...</label>
+      <label for="image-upload" class="btn-upload" id="btn-upload-label">📸 Select / Upload Photos (Multiple)...</label>
       <input type="file" id="image-upload" accept="image/*" multiple>
 
       <div class="control-group">
-        <label><span>Layout Diamond</span></label>
+        <label><span>Diamond Layout</span></label>
         <select id="gc-preset">
-          <option value="classic-diamond" selected>Classic Diamond (5 Foto)</option>
-          <option value="4-diagonal">4-Diagonal Polygon (4 Foto)</option>
-          <option value="diamond-cross">Diamond Cross (5 Foto)</option>
-          <option value="rhombus-lattice">Rhombus Lattice Grid (9 Foto)</option>
-          <option value="inner-outer">Double Diamond (2 Foto)</option>
+          <option value="classic-diamond" selected>Classic Diamond (5 Photos)</option>
+          <option value="4-diagonal">4-Diagonal Polygon (4 Photos)</option>
+          <option value="diamond-cross">Diamond Cross (5 Photos)</option>
+          <option value="rhombus-lattice">Rhombus Lattice Grid (9 Photos)</option>
+          <option value="inner-outer">Double Diamond (2 Photos)</option>
         </select>
       </div>
 
       <div class="control-group">
-        <label><span>Rasio Kanvas</span></label>
+        <label><span>Aspect Ratio</span></label>
         <select id="gc-aspect">
-          <option value="1:1" selected>1:1 (Persegi - Feed)</option>
+          <option value="1:1" selected>1:1 (Square - Feed)</option>
           <option value="4:5">4:5 (Instagram Portrait)</option>
           <option value="9:16">9:16 (Story / Reel)</option>
           <option value="16:9">16:9 (Landscape)</option>
@@ -207,37 +207,37 @@
       </div>
 
       <div class="control-group">
-        <label><span>Jarak Sela (Gap)</span> <span id="val-gap">8px</span></label>
+        <label><span>Photo Gap</span> <span id="val-gap">8px</span></label>
         <input type="range" id="gc-gap" min="0" max="30" value="8">
       </div>
 
       <div class="control-group">
-        <label><span>Margin Luar</span> <span id="val-margin">12px</span></label>
+        <label><span>Outer Margin</span> <span id="val-margin">12px</span></label>
         <input type="range" id="gc-margin" min="0" max="40" value="12">
       </div>
 
       <div class="control-group">
-        <label><span>Skala Diamond Center</span> <span id="val-scale">100%</span></label>
+        <label><span>Center Diamond Scale</span> <span id="val-scale">100%</span></label>
         <input type="range" id="gc-scale" min="60" max="140" value="100">
       </div>
 
       <div class="control-group">
-        <label><span>Warna Latar / Border</span></label>
+        <label><span>Border / BG Color</span></label>
         <input type="color" id="gc-bg" value="#ffffff">
       </div>
     </div>
 
     <div class="canvas-container" id="canvas-container">
       <div id="placeholder-text" style="color: var(--text-muted); font-size: 13px; padding: 80px 0;">
-        Unggah foto untuk membuat kolase diamond.
+        Upload photos to generate your diamond collage.
       </div>
       <canvas id="gc-canvas" style="display: none;"></canvas>
     </div>
 
     <div class="action-row">
-      <button id="btn-shuffle" class="btn-action btn-secondary" disabled>🔀 Acak Posisi Foto</button>
-      <div class="status-text" id="status-text">Siap</div>
-      <button id="btn-download" class="btn-action" disabled>Unduh Hasil Kolase</button>
+      <button id="btn-shuffle" class="btn-action btn-secondary" disabled>🔀 Shuffle Photos</button>
+      <div class="status-text" id="status-text">Ready</div>
+      <button id="btn-download" class="btn-action" disabled>Download Collage</button>
     </div>
   </div>
 </div>
@@ -271,7 +271,7 @@
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    btnUploadLabel.textContent = `📸 Terisi ${files.length} Foto`;
+    btnUploadLabel.textContent = `📸 Loaded ${files.length} Photo(s)`;
     uploadedImages = [];
 
     let loadedCount = 0;
@@ -434,7 +434,7 @@
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       finalPoints.forEach(p => {
         if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
+        if (p.y < maxX) maxX = p.x;
         if (p.y < minY) minY = p.y;
         if (p.y > maxY) maxY = p.y;
       });
@@ -473,7 +473,7 @@
       ctx.restore();
     });
 
-    statusText.textContent = `Slot Diamond: ${polygons.length} | Total Foto: ${uploadedImages.length}`;
+    statusText.textContent = `Diamond slots: ${polygons.length} | Total Photos: ${uploadedImages.length}`;
   }
 
   downloadBtn.addEventListener('click', () => {
