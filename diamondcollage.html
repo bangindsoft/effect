@@ -267,29 +267,59 @@
 
   let uploadedImages = [];
 
-  imageUpload.addEventListener('change', (e) => {
+  imageUpload.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    btnUploadLabel.textContent = `📸 Loaded ${files.length} Photo(s)`;
+    statusText.textContent = "Loading images...";
+    btnUploadLabel.textContent = `⏳ Processing ${files.length} Photo(s)...`;
     uploadedImages = [];
 
-    let loadedCount = 0;
-    files.forEach(file => {
-      const img = new Image();
-      img.onload = () => {
-        uploadedImages.push(img);
-        loadedCount++;
-        if (loadedCount === files.length) {
-          placeholder.style.display = "none";
-          canvas.style.display = "block";
-          downloadBtn.disabled = false;
-          shuffleBtn.disabled = false;
-          renderDiamondCollage();
-        }
-      };
-      img.src = URL.createObjectURL(file);
+    const loadPromises = files.map(file => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        
+        img.onload = async () => {
+          try {
+            if ('decode' in img) {
+              await img.decode();
+            }
+          } catch (err) {
+            console.warn("Decode info:", err);
+          }
+          if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+            resolve(img);
+          } else {
+            resolve(null);
+          }
+        };
+
+        img.onerror = () => {
+          console.error("Failed image:", file.name);
+          resolve(null);
+        };
+
+        img.src = objectUrl;
+      });
     });
+
+    const results = await Promise.all(loadPromises);
+    uploadedImages = results.filter(img => img !== null);
+
+    if (uploadedImages.length === 0) {
+      statusText.textContent = "Error: No valid images loaded.";
+      btnUploadLabel.textContent = "📸 Select / Upload Photos (Multiple)...";
+      alert("Gagal memuat foto. Pastikan file berupa format gambar (JPG/PNG/WebP) yang valid.");
+      return;
+    }
+
+    btnUploadLabel.textContent = `📸 Loaded ${uploadedImages.length} Photo(s)`;
+    placeholder.style.display = "none";
+    canvas.style.display = "block";
+    downloadBtn.disabled = false;
+    shuffleBtn.disabled = false;
+    renderDiamondCollage();
   });
 
   [presetSelect, aspectSelect, gapInput, marginInput, scaleInput, bgInput].forEach(el => {
@@ -363,8 +393,8 @@
     }
     else if (preset === 'inner-outer') {
       return [
-        { pts: [[0.5, 0.05], [0.95, 0.5], [0.5, 0.95], [0.05, 0.5]], cx: 0.5, cy: 0.5 },
-        { pts: [[0,0],[1,0],[1,1],[0,1]], cx: 0.1, cy: 0.1 }
+        { pts: [[0,0],[1,0],[1,1],[0,1]], cx: 0.1, cy: 0.1 },
+        { pts: [[0.5, 0.1], [0.9, 0.5], [0.5, 0.9], [0.1, 0.5]], cx: 0.5, cy: 0.5 }
       ];
     }
 
@@ -392,18 +422,22 @@
     ctx.fillStyle = bgInput.value;
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    const scaleFactor = parseInt(scaleInput.value);
+    const scaleFactor = parseInt(scaleInput.value) || 100;
     const polygons = getLayoutPolygons(presetSelect.value, scaleFactor);
     
     const scale = canvasW / 1000;
-    const margin = parseInt(marginInput.value) * scale * 2;
-    const gap = parseInt(gapInput.value) * scale * 2;
+    const margin = (parseInt(marginInput.value) || 0) * scale * 2;
+    const gap = (parseInt(gapInput.value) || 0) * scale * 2;
 
     const availW = canvasW - (margin * 2);
     const availH = canvasH - (margin * 2);
 
     polygons.forEach((poly, index) => {
       const img = uploadedImages[index % uploadedImages.length];
+      if (!img) return;
+
+      const nw = img.naturalWidth || img.width || 100;
+      const nh = img.naturalHeight || img.height || 100;
 
       let rawPoints = poly.pts.map(p => ({
         x: margin + p[0] * availW,
@@ -434,7 +468,7 @@
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       finalPoints.forEach(p => {
         if (p.x < minX) minX = p.x;
-        if (p.y < maxX) maxX = p.x;
+        if (p.x > maxX) maxX = p.x;
         if (p.y < minY) minY = p.y;
         if (p.y > maxY) maxY = p.y;
       });
@@ -444,16 +478,7 @@
 
       if (boxW <= 0 || boxH <= 0) return;
 
-      ctx.save();
-      ctx.beginPath();
-      finalPoints.forEach((p, i) => {
-        if (i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      });
-      ctx.closePath();
-      ctx.clip();
-
-      const imgAspect = img.width / img.height;
+      const imgAspect = nw / nh;
       const boxAspect = boxW / boxH;
       let drawW, drawH, drawX, drawY;
 
@@ -469,8 +494,22 @@
         drawY = minY - (drawH - boxH) / 2;
       }
 
-      ctx.drawImage(img, drawX, drawY, drawW, drawH);
-      ctx.restore();
+      try {
+        ctx.save();
+        ctx.beginPath();
+        finalPoints.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.closePath();
+        ctx.clip();
+
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        ctx.restore();
+      } catch (err) {
+        console.error("Slot render error:", err);
+        ctx.restore();
+      }
     });
 
     statusText.textContent = `Diamond slots: ${polygons.length} | Total Photos: ${uploadedImages.length}`;
