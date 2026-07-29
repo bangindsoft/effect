@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weave Effect Photo Generator</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      margin: 0 0 5px 0;
+      color: var(--accent);
+      font-size: 1.5rem;
+    }
+
+    .header p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      background: #020617;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .control-group label {
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      color: var(--accent);
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .control-group label span.val { color: var(--text-main); }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 35px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 2px;
+    }
+
+    .btn-upload {
+      background: var(--border);
+      color: #fff;
+      border: 1px dashed var(--accent);
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s;
+      grid-column: 1 / -1;
+    }
+
+    .btn-upload:hover { background: #475569; }
+    input[type="file"] { display: none; }
+
+    .canvas-container {
+      width: 100%;
+      background: #000;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 300px;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 60vh;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    }
+
+    .placeholder {
+      position: absolute;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-download:hover { background: var(--accent-hover); }
+    .btn-download:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🧶 Weave Effect Generator</h1>
+    <p>Ubah foto Anda menjadi anyaman (basket weave) secara instan</p>
+  </div>
+
+  <div class="controls">
+    <label for="img-upload" class="btn-upload" id="upload-label">
+      📸 Upload Foto
+    </label>
+    <input type="file" id="img-upload" accept="image/*">
+
+    <div class="control-group">
+      <label>Ukuran Anyaman <span class="val" id="val-strip">40px</span></label>
+      <input type="range" id="inp-strip" min="10" max="150" value="40">
+    </div>
+
+    <div class="control-group">
+      <label>Jarak Celah <span class="val" id="val-gap">4px</span></label>
+      <input type="range" id="inp-gap" min="0" max="30" value="4">
+    </div>
+
+    <div class="control-group">
+      <label>Intensitas 3D <span class="val" id="val-shadow">70%</span></label>
+      <input type="range" id="inp-shadow" min="0" max="100" value="70">
+    </div>
+
+    <div class="control-group">
+      <label>Warna Latar</label>
+      <input type="color" id="inp-bg" value="#000000">
+    </div>
+  </div>
+
+  <div class="canvas-container">
+    <div class="placeholder" id="placeholder">Upload foto terlebih dahulu</div>
+    <canvas id="canvas" style="display:none;"></canvas>
+  </div>
+
+  <div class="footer-actions">
+    <button class="btn-download" id="btn-download" disabled>⬇️ Download Hasil</button>
+  </div>
+</div>
+
+<script>
+  const uploadInput = document.getElementById('img-upload');
+  const uploadLabel = document.getElementById('upload-label');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const placeholder = document.getElementById('placeholder');
+  const btnDownload = document.getElementById('btn-download');
+
+  const inpStrip = document.getElementById('inp-strip');
+  const inpGap = document.getElementById('inp-gap');
+  const inpShadow = document.getElementById('inp-shadow');
+  const inpBg = document.getElementById('inp-bg');
+
+  const valStrip = document.getElementById('val-strip');
+  const valGap = document.getElementById('val-gap');
+  const valShadow = document.getElementById('val-shadow');
+
+  let currentImg = null;
+  let offCanvas = document.createElement('canvas');
+  let offCtx = offCanvas.getContext('2d');
+
+  function updateLabels() {
+    valStrip.textContent = inpStrip.value + 'px';
+    valGap.textContent = inpGap.value + 'px';
+    valShadow.textContent = inpShadow.value + '%';
+  }
+
+  [inpStrip, inpGap, inpShadow, inpBg].forEach(el => {
+    el.addEventListener('input', () => {
+      updateLabels();
+      if (currentImg) renderWeave();
+    });
+  });
+
+  uploadInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    uploadLabel.textContent = `⏳ Memproses: ${file.name}...`;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        currentImg = img;
+        uploadLabel.textContent = `📸 Ganti Foto`;
+        placeholder.style.display = 'none';
+        canvas.style.display = 'block';
+        btnDownload.disabled = false;
+        
+        const maxW = 1200;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW) {
+          h = (maxW / w) * h;
+          w = maxW;
+        }
+        
+        offCanvas.width = w;
+        offCanvas.height = h;
+        offCtx.drawImage(img, 0, 0, w, h);
+        
+        canvas.width = w;
+        canvas.height = h;
+
+        renderWeave();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function renderWeave() {
+    if (!currentImg) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const stripWidth = parseInt(inpStrip.value, 10);
+    const gap = parseInt(inpGap.value, 10);
+    const shadowAlpha = parseInt(inpShadow.value, 10) / 100;
+    const shadowSize = stripWidth * 0.45; // proporsional dengan pita anyaman
+
+    // 1. Gambar Background
+    ctx.fillStyle = inpBg.value;
+    ctx.fillRect(0, 0, w, h);
+
+    const step = stripWidth + gap;
+    const cols = Math.ceil(w / step);
+    const rows = Math.ceil(h / step);
+
+    // 2. Gambar pita Horizontal (Lapisan Bawah)
+    for (let r = 0; r < rows; r++) {
+      let y = r * step;
+      ctx.drawImage(offCanvas, 0, y, w, stripWidth, 0, y, w, stripWidth);
+    }
+
+    // 3. Gambar pita Vertikal (Lapisan Atas)
+    for (let c = 0; c < cols; c++) {
+      let x = c * step;
+      ctx.drawImage(offCanvas, x, 0, stripWidth, h, x, 0, stripWidth, h);
+    }
+
+    // 4. Proses Anyaman (Membawa bagian Horizontal ke atas pada iterasi Genap)
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        if ((c + r) % 2 === 0) {
+          let x = c * step;
+          let y = r * step;
+          ctx.drawImage(offCanvas, x, y, stripWidth, stripWidth, x, y, stripWidth, stripWidth);
+        }
+      }
+    }
+
+    // 5. Tambahkan Bayangan (3D Effect)
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        let x = c * step;
+        let y = r * step;
+
+        if ((c + r) % 2 === 0) {
+          // Horizontal melintang ke atas: Memberi bayangan ke Atas dan ke Bawah (di atas Vertikal)
+          let gradUp = ctx.createLinearGradient(0, y, 0, y - shadowSize);
+          gradUp.addColorStop(0, `rgba(0,0,0,${shadowAlpha})`);
+          gradUp.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gradUp;
+          ctx.fillRect(x, y - shadowSize, stripWidth, shadowSize);
+
+          let gradDown = ctx.createLinearGradient(0, y + stripWidth, 0, y + stripWidth + shadowSize);
+          gradDown.addColorStop(0, `rgba(0,0,0,${shadowAlpha})`);
+          gradDown.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gradDown;
+          ctx.fillRect(x, y + stripWidth, stripWidth, shadowSize);
+        } else {
+          // Vertikal melintang ke atas: Memberi bayangan Kiri dan Kanan (di atas Horizontal)
+          let gradLeft = ctx.createLinearGradient(x, 0, x - shadowSize, 0);
+          gradLeft.addColorStop(0, `rgba(0,0,0,${shadowAlpha})`);
+          gradLeft.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gradLeft;
+          ctx.fillRect(x - shadowSize, y, shadowSize, stripWidth);
+
+          let gradRight = ctx.createLinearGradient(x + stripWidth, 0, x + stripWidth + shadowSize, 0);
+          gradRight.addColorStop(0, `rgba(0,0,0,${shadowAlpha})`);
+          gradRight.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gradRight;
+          ctx.fillRect(x + stripWidth, y, shadowSize, stripWidth);
+        }
+      }
+    }
+  }
+
+  // Fungsi Download
+  btnDownload.addEventListener('click', () => {
+    if (!currentImg) return;
+    const link = document.createElement('a');
+    link.download = 'Weave_Effect.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+  });
+</script>
+
+</body>
+</html>
