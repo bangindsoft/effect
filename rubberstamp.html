@@ -172,12 +172,12 @@
   <div class="controls">
     <div class="control-group">
       <label>Top Circular Text</label>
-      <input type="text" id="inp-top" value="COMPANY NAME">
+      <input type="text" id="inp-top" value="PT. MAJU JAYA SENTOSA SELAMANYA">
     </div>
 
     <div class="control-group">
       <label>Bottom Circular Text</label>
-      <input type="text" id="inp-bottom" value="OFFICIAL SEAL">
+      <input type="text" id="inp-bottom" value="PENYEDIA">
     </div>
 
     <div class="control-group">
@@ -222,20 +222,46 @@
   });
 
   function drawCircularText(ctx, str, cx, cy, radius, startAngle, isBottom) {
+    if (!str) return;
+    
     ctx.save();
     ctx.translate(cx, cy);
-    
-    // Use monospace or standard font for consistent spacing, tracking can be simulated
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     
-    // Calculate total angle based on text width
-    let totalAngle = 0;
-    // adding a bit of letter spacing
-    const letterSpacing = 0.05; 
+    let baseFontSize = 28;
+    let letterSpacing = 0.05; 
     
-    for(let i=0; i<str.length; i++) {
+    // Batas sudut maksimal (kurang sedikit dari 180 derajat / Math.PI agar ada jarak aman)
+    let maxAngle = Math.PI - 0.3; 
+    
+    ctx.font = `bold ${baseFontSize}px 'Courier New', Courier, monospace`;
+    let totalAngle = 0;
+    
+    // Hitung panjang teks total dulu
+    for(let i = 0; i < str.length; i++) {
       totalAngle += (ctx.measureText(str[i]).width / radius) + letterSpacing;
+    }
+    
+    let fontSize = baseFontSize;
+    let activeSpacing = letterSpacing;
+    
+    // FITUR AUTO-RESIZE: Jika teks lebih panjang dari maxAngle, kecilkan ukurannya
+    if (totalAngle > maxAngle) {
+      let scaleRatio = maxAngle / totalAngle;
+      fontSize = baseFontSize * scaleRatio;
+      
+      // Jangan sampai font terlalu kecil
+      if (fontSize < 10) fontSize = 10; 
+      
+      ctx.font = `bold ${fontSize}px 'Courier New', Courier, monospace`;
+      activeSpacing = letterSpacing * scaleRatio; 
+      
+      // Hitung ulang sudut total dengan ukuran font baru
+      totalAngle = 0;
+      for(let i = 0; i < str.length; i++) {
+        totalAngle += (ctx.measureText(str[i]).width / radius) + activeSpacing;
+      }
     }
     
     let angle = startAngle - (totalAngle / 2);
@@ -243,7 +269,7 @@
     for (let i = 0; i < str.length; i++) {
       let char = str[i];
       let charWidth = ctx.measureText(char).width;
-      let charAngle = (charWidth / radius) + letterSpacing;
+      let charAngle = (charWidth / radius) + activeSpacing;
       
       ctx.save();
       ctx.rotate(angle + charAngle/2);
@@ -278,7 +304,6 @@
     const centerText = inpCenter.value;
     const noise = parseInt(inpNoise.value, 10) / 100;
 
-    // Draw Stamp Elements
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
 
@@ -300,14 +325,22 @@
     ctx.arc(cx, cy, 110, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Center Text
-    ctx.font = "bold 36px 'Courier New', Courier, monospace";
+    // Center Text (Ditambahkan fitur Auto-Resize juga)
+    let centerFontSize = 36;
+    ctx.font = `bold ${centerFontSize}px 'Courier New', Courier, monospace`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+    
+    let centerWidth = ctx.measureText(centerText).width;
+    // Maksimal lebar area teks tengah (diameter lingkaran dalam = 220)
+    if (centerWidth > 190) { 
+        let scale = 190 / centerWidth;
+        centerFontSize = centerFontSize * scale;
+        ctx.font = `bold ${centerFontSize}px 'Courier New', Courier, monospace`;
+    }
     ctx.fillText(centerText, cx, cy);
 
     // Circular Texts
-    ctx.font = "bold 28px 'Courier New', Courier, monospace";
     if (topText) {
       drawCircularText(ctx, topText, cx, cy, 140, -Math.PI/2, false);
     }
@@ -321,13 +354,10 @@
       const data = imgData.data;
       
       for (let i = 0; i < data.length; i += 4) {
-        // If pixel is not fully transparent
         if (data[i+3] > 0) {
-          // Randomly erase pixels to create weathered look
           if (Math.random() < noise) {
-            data[i+3] = 0; // Make transparent
+            data[i+3] = 0; 
           } else {
-            // Randomly reduce opacity slightly for semi-weathered look
             if (Math.random() < 0.5) {
               data[i+3] = Math.max(0, data[i+3] - (Math.random() * 100));
             }
