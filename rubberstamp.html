@@ -172,12 +172,12 @@
   <div class="controls">
     <div class="control-group">
       <label>Top Circular Text</label>
-      <input type="text" id="inp-top" value="PT. MAJU JAYA SENTOSA SELAMANYA">
+      <input type="text" id="inp-top" value="COMPANY NAME">
     </div>
 
     <div class="control-group">
       <label>Bottom Circular Text</label>
-      <input type="text" id="inp-bottom" value="PENYEDIA">
+      <input type="text" id="inp-bottom" value="OFFICIAL SEAL">
     </div>
 
     <div class="control-group">
@@ -187,7 +187,7 @@
 
     <div class="control-group">
       <label>Stamp Color</label>
-      <input type="color" id="inp-color" value="#dc2626">
+      <input type="color" id="inp-color" value="#ffffff">
     </div>
 
     <div class="control-group" style="grid-column: span 2;">
@@ -221,7 +221,8 @@
     el.addEventListener('input', renderStamp);
   });
 
-  function drawCircularText(ctx, str, cx, cy, radius, startAngle, isBottom) {
+  // Fungsi menggambar teks melingkar yang sudah diperbaiki total
+  function drawCircularText(ctx, str, cx, cy, radius, isTop) {
     if (!str) return;
     
     ctx.save();
@@ -232,13 +233,13 @@
     let baseFontSize = 28;
     let letterSpacing = 0.05; 
     
-    // Batas sudut maksimal (kurang sedikit dari 180 derajat / Math.PI agar ada jarak aman)
-    let maxAngle = Math.PI - 0.3; 
+    // Safety margin yang aman agar atas dan bawah TIDAK BISA bersentuhan (jarak di arah jam 9 & 3)
+    let maxAngle = Math.PI - 0.4; 
     
     ctx.font = `bold ${baseFontSize}px 'Courier New', Courier, monospace`;
     let totalAngle = 0;
     
-    // Hitung panjang teks total dulu
+    // Hitung panjang teks
     for(let i = 0; i < str.length; i++) {
       totalAngle += (ctx.measureText(str[i]).width / radius) + letterSpacing;
     }
@@ -246,46 +247,56 @@
     let fontSize = baseFontSize;
     let activeSpacing = letterSpacing;
     
-    // FITUR AUTO-RESIZE: Jika teks lebih panjang dari maxAngle, kecilkan ukurannya
+    // Auto-Resize jika teks kepanjangan
     if (totalAngle > maxAngle) {
       let scaleRatio = maxAngle / totalAngle;
       fontSize = baseFontSize * scaleRatio;
-      
-      // Jangan sampai font terlalu kecil
       if (fontSize < 10) fontSize = 10; 
       
       ctx.font = `bold ${fontSize}px 'Courier New', Courier, monospace`;
       activeSpacing = letterSpacing * scaleRatio; 
       
-      // Hitung ulang sudut total dengan ukuran font baru
       totalAngle = 0;
       for(let i = 0; i < str.length; i++) {
         totalAngle += (ctx.measureText(str[i]).width / radius) + activeSpacing;
       }
     }
     
-    let angle = startAngle - (totalAngle / 2);
-    
-    for (let i = 0; i < str.length; i++) {
-      let char = str[i];
-      let charWidth = ctx.measureText(char).width;
-      let charAngle = (charWidth / radius) + activeSpacing;
+    if (isTop) {
+      // TEKS ATAS: Mulai dari kiri, jalan ke kanan (Searah Jarum Jam)
+      let currentAngle = -Math.PI/2 - (totalAngle / 2);
       
-      ctx.save();
-      ctx.rotate(angle + charAngle/2);
-      
-      if (isBottom) {
-        ctx.translate(0, radius);
-        ctx.rotate(Math.PI); 
-      } else {
+      for (let i = 0; i < str.length; i++) {
+        let charWidth = ctx.measureText(str[i]).width;
+        let charAngle = (charWidth / radius) + activeSpacing;
+        
+        ctx.save();
+        ctx.rotate(currentAngle + charAngle/2);
         ctx.translate(0, -radius);
+        ctx.fillText(str[i], 0, 0);
+        ctx.restore();
+        
+        currentAngle += charAngle;
       }
+    } else {
+      // TEKS BAWAH: Mulai dari kiri, jalan ke kanan (BERLAWANAN Jarum Jam)
+      let currentAngle = Math.PI/2 + (totalAngle / 2);
       
-      ctx.fillText(char, 0, 0);
-      ctx.restore();
-      
-      angle += charAngle;
+      for (let i = 0; i < str.length; i++) {
+        let charWidth = ctx.measureText(str[i]).width;
+        let charAngle = (charWidth / radius) + activeSpacing;
+        
+        ctx.save();
+        ctx.rotate(currentAngle - charAngle/2);
+        ctx.translate(0, radius);
+        ctx.rotate(Math.PI); // Putar 180 derajat agar huruf berdiri tegak dibaca
+        ctx.fillText(str[i], 0, 0);
+        ctx.restore();
+        
+        currentAngle -= charAngle; // Sudut berkurang (berjalan ke kanan bawah)
+      }
     }
+    
     ctx.restore();
   }
 
@@ -307,32 +318,31 @@
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
 
-    // Outer Thick Circle
+    // Lingkaran Luar (Tebal)
     ctx.lineWidth = 6;
     ctx.beginPath();
     ctx.arc(cx, cy, 180, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Outer Thin Circle
+    // Lingkaran Luar (Tipis)
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(cx, cy, 170, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Inner Thin Circle
+    // Lingkaran Dalam (Tipis)
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(cx, cy, 110, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Center Text (Ditambahkan fitur Auto-Resize juga)
+    // Teks Tengah (Auto-Resize)
     let centerFontSize = 36;
     ctx.font = `bold ${centerFontSize}px 'Courier New', Courier, monospace`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     
     let centerWidth = ctx.measureText(centerText).width;
-    // Maksimal lebar area teks tengah (diameter lingkaran dalam = 220)
     if (centerWidth > 190) { 
         let scale = 190 / centerWidth;
         centerFontSize = centerFontSize * scale;
@@ -340,15 +350,15 @@
     }
     ctx.fillText(centerText, cx, cy);
 
-    // Circular Texts
+    // Teks Melingkar Atas & Bawah
     if (topText) {
-      drawCircularText(ctx, topText, cx, cy, 140, -Math.PI/2, false);
+      drawCircularText(ctx, topText, cx, cy, 140, true);
     }
     if (bottomText) {
-      drawCircularText(ctx, bottomText, cx, cy, 140, Math.PI/2, true);
+      drawCircularText(ctx, bottomText, cx, cy, 140, false);
     }
 
-    // Apply Grunge Effect (Noise masking)
+    // Efek Grunge (Bercak Stempel)
     if (noise > 0) {
       const imgData = ctx.getImageData(0, 0, w, h);
       const data = imgData.data;
