@@ -177,7 +177,7 @@
 
     <div class="control-group">
       <label>Bottom Circular Text</label>
-      <input type="text" id="inp-bottom" value="OFFICIAL SEAL">
+      <input type="text" id="inp-bottom" value="THE BEST OFFICIAL SEAL">
     </div>
 
     <div class="control-group">
@@ -216,12 +216,11 @@
   const inpNoise = document.getElementById('inp-noise');
   const btnDownload = document.getElementById('btn-download');
 
-  // Trigger render on input changes
   [inpTop, inpBottom, inpCenter, inpColor, inpNoise].forEach(el => {
     el.addEventListener('input', renderStamp);
   });
 
-  // Fungsi menggambar teks melingkar yang sudah diperbaiki total
+  // Logika rotasi melingkar yang sudah dirombak total
   function drawCircularText(ctx, str, cx, cy, radius, isTop) {
     if (!str) return;
     
@@ -232,14 +231,12 @@
     
     let baseFontSize = 28;
     let letterSpacing = 0.05; 
-    
-    // Safety margin yang aman agar atas dan bawah TIDAK BISA bersentuhan (jarak di arah jam 9 & 3)
-    let maxAngle = Math.PI - 0.4; 
+    let maxAngle = Math.PI - 0.4; // Jarak aman agar atas bawah tidak tabrakan
     
     ctx.font = `bold ${baseFontSize}px 'Courier New', Courier, monospace`;
     let totalAngle = 0;
     
-    // Hitung panjang teks
+    // 1. Hitung total sudut yang dibutuhkan teks
     for(let i = 0; i < str.length; i++) {
       totalAngle += (ctx.measureText(str[i]).width / radius) + letterSpacing;
     }
@@ -247,7 +244,7 @@
     let fontSize = baseFontSize;
     let activeSpacing = letterSpacing;
     
-    // Auto-Resize jika teks kepanjangan
+    // 2. Auto-Resize jika teks melebihi maxAngle
     if (totalAngle > maxAngle) {
       let scaleRatio = maxAngle / totalAngle;
       fontSize = baseFontSize * scaleRatio;
@@ -262,38 +259,44 @@
       }
     }
     
+    // 3. Eksekusi menggambar berdasarkan posisi (Atas / Bawah)
     if (isTop) {
-      // TEKS ATAS: Mulai dari kiri, jalan ke kanan (Searah Jarum Jam)
+      // TEKS ATAS: Mulai dari Kiri Atas (-90 deg digeser ke kiri) berjalan ke Kanan
       let currentAngle = -Math.PI/2 - (totalAngle / 2);
       
       for (let i = 0; i < str.length; i++) {
         let charWidth = ctx.measureText(str[i]).width;
         let charAngle = (charWidth / radius) + activeSpacing;
         
+        currentAngle += charAngle/2; // Maju ke titik tengah karakter
+        
         ctx.save();
-        ctx.rotate(currentAngle + charAngle/2);
-        ctx.translate(0, -radius);
+        ctx.rotate(currentAngle); // Arahkan sumbu X ke keliling
+        ctx.translate(radius, 0); // Maju sejauh radius ke garis keliling
+        ctx.rotate(Math.PI/2);    // Putar teks 90 derajat agar berdiri tegak menghadap luar
         ctx.fillText(str[i], 0, 0);
         ctx.restore();
         
-        currentAngle += charAngle;
+        currentAngle += charAngle/2; // Maju melewati karakter
       }
     } else {
-      // TEKS BAWAH: Mulai dari kiri, jalan ke kanan (BERLAWANAN Jarum Jam)
+      // TEKS BAWAH: Mulai dari Kiri Bawah (90 deg digeser ke kiri) berjalan ke Kanan
       let currentAngle = Math.PI/2 + (totalAngle / 2);
       
       for (let i = 0; i < str.length; i++) {
         let charWidth = ctx.measureText(str[i]).width;
         let charAngle = (charWidth / radius) + activeSpacing;
         
+        currentAngle -= charAngle/2; // Maju ke titik tengah karakter (berlawanan jarum jam)
+        
         ctx.save();
-        ctx.rotate(currentAngle - charAngle/2);
-        ctx.translate(0, radius);
-        ctx.rotate(Math.PI); // Putar 180 derajat agar huruf berdiri tegak dibaca
+        ctx.rotate(currentAngle); // Arahkan sumbu X ke keliling
+        ctx.translate(radius, 0); // Maju sejauh radius ke garis keliling
+        ctx.rotate(-Math.PI/2);   // Putar teks -90 derajat agar tegak terbaca dari kiri ke kanan
         ctx.fillText(str[i], 0, 0);
         ctx.restore();
         
-        currentAngle -= charAngle; // Sudut berkurang (berjalan ke kanan bawah)
+        currentAngle -= charAngle/2; // Maju melewati karakter
       }
     }
     
@@ -306,7 +309,6 @@
     const cx = w / 2;
     const cy = h / 2;
     
-    // Clear canvas
     ctx.clearRect(0, 0, w, h);
     
     const color = inpColor.value;
@@ -336,7 +338,7 @@
     ctx.arc(cx, cy, 110, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Teks Tengah (Auto-Resize)
+    // Teks Tengah
     let centerFontSize = 36;
     ctx.font = `bold ${centerFontSize}px 'Courier New', Courier, monospace`;
     ctx.textAlign = "center";
@@ -350,7 +352,7 @@
     }
     ctx.fillText(centerText, cx, cy);
 
-    // Teks Melingkar Atas & Bawah
+    // Teks Melingkar
     if (topText) {
       drawCircularText(ctx, topText, cx, cy, 140, true);
     }
@@ -358,7 +360,7 @@
       drawCircularText(ctx, bottomText, cx, cy, 140, false);
     }
 
-    // Efek Grunge (Bercak Stempel)
+    // Efek Grunge
     if (noise > 0) {
       const imgData = ctx.getImageData(0, 0, w, h);
       const data = imgData.data;
@@ -378,7 +380,6 @@
     }
   }
 
-  // Initial render
   window.onload = renderStamp;
 
   btnDownload.addEventListener('click', () => {
