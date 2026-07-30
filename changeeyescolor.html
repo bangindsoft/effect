@@ -53,6 +53,7 @@
       display: flex;
       flex-direction: column;
       gap: 15px;
+      z-index: 2; /* Agar sidebar tetap di atas saat foto di-zoom */
     }
 
     .header h1 {
@@ -156,7 +157,7 @@
       align-items: center;
       min-height: 400px;
       border: 1px solid var(--border);
-      overflow: hidden;
+      overflow: hidden; /* Mencegah foto meluber keluar saat di-zoom */
       position: relative;
     }
 
@@ -164,6 +165,11 @@
       max-width: 100%;
       max-height: 75vh;
       box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+      cursor: grab;
+      transition: transform 0.05s linear; /* Efek smooth saat di-zoom */
+    }
+    canvas:active {
+      cursor: grabbing;
     }
 
     .placeholder-text {
@@ -187,6 +193,21 @@
       z-index: 10;
       border: 1px solid #10b981;
       box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    
+    .zoom-hint {
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
+      background: rgba(2, 6, 23, 0.7);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      pointer-events: none;
+      display: none;
+      z-index: 10;
+      border: 1px solid var(--border);
     }
 
     .btn-download {
@@ -247,9 +268,10 @@
   </div>
 
   <!-- Main Canvas -->
-  <div class="canvas-wrapper">
+  <div class="canvas-wrapper" id="canvas-wrapper">
     <div id="placeholder" class="placeholder-text">Wait for AI to be "Ready",<br>then upload a clear face photo.</div>
     <div id="loading" class="loading-overlay">⏳ Detecting eyes...</div>
+    <div id="zoom-hint" class="zoom-hint">🖱️ Scroll to Zoom | Drag to Pan | Dbl-Click to Reset</div>
     <canvas id="canvas" style="display: none;"></canvas>
   </div>
 </div>
@@ -261,9 +283,11 @@
   import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
 
   const canvas = document.getElementById('canvas');
+  const canvasWrapper = document.getElementById('canvas-wrapper');
   const ctx = canvas.getContext('2d');
   const placeholder = document.getElementById('placeholder');
   const loadingOverlay = document.getElementById('loading');
+  const zoomHint = document.getElementById('zoom-hint');
   const sourceImg = document.getElementById('source-img');
   
   const inpFile = document.getElementById('inp-file');
@@ -276,6 +300,14 @@
 
   let faceLandmarker = null;
   let currentLandmarks = []; 
+
+  // Variabel untuk fitur Zoom & Pan
+  let scale = 1;
+  let pointX = 0;
+  let pointY = 0;
+  let startX = 0;
+  let startY = 0;
+  let isPanning = false;
 
   // 1. INITIALIZE AI MEDIAPIPE
   async function initializeAI() {
@@ -311,9 +343,9 @@
     const file = e.target.files[0];
     if (!file) return;
     
-    // Tampilkan loading dan sembunyikan text awal
     placeholder.style.display = 'none';
     loadingOverlay.style.display = 'block';
+    zoomHint.style.display = 'none';
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -324,26 +356,29 @@
 
   // 3. PROCESS ON IMAGE LOAD
   sourceImg.onload = () => {
-    // Set up canvas size
     const MAX_SIZE = 1920;
-    let scale = 1;
+    let imgScale = 1;
     if (sourceImg.width > MAX_SIZE || sourceImg.height > MAX_SIZE) {
-        scale = Math.min(MAX_SIZE / sourceImg.width, MAX_SIZE / sourceImg.height);
+        imgScale = Math.min(MAX_SIZE / sourceImg.width, MAX_SIZE / sourceImg.height);
     }
-    canvas.width = sourceImg.width * scale;
-    canvas.height = sourceImg.height * scale;
+    canvas.width = sourceImg.width * imgScale;
+    canvas.height = sourceImg.height * imgScale;
 
-    // Gambar foto aslinya langsung ke canvas
+    // Reset Zoom & Pan tiap kali upload foto baru
+    scale = 1;
+    pointX = 0;
+    pointY = 0;
+    updateTransform();
+
     ctx.drawImage(sourceImg, 0, 0, canvas.width, canvas.height);
     canvas.style.display = 'block';
 
-    // Gunakan setTimeout agar browser punya waktu untuk me-render foto asli
-    // sebelum UI terhenti sesaat (freeze) oleh proses deteksi AI
     setTimeout(() => {
       const results = faceLandmarker.detect(sourceImg);
       currentLandmarks = results.faceLandmarks;
       
       loadingOverlay.style.display = 'none';
+      zoomHint.style.display = 'block'; // Tampilkan panduan zoom
 
       if (currentLandmarks.length === 0) {
         alert("Oops, the AI couldn't detect a face in this photo. Try a brighter, front-facing image.");
@@ -403,17 +438,15 @@
     ctx.globalAlpha = opacity;
 
     for (const face of currentLandmarks) {
-      // Kanan
-      drawIris(face, 468, 469, blendMode, color); 
-      // Kiri
-      drawIris(face, 473, 474, blendMode, color); 
+      drawIris(face, 468, 469, blendMode, color); // Kanan
+      drawIris(face, 473, 474, blendMode, color); // Kiri
     }
 
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1.0;
   }
 
-  // 7. DOWNLOAD BUTTON
+  // 7. DOWNLOAD BUTTON (Memastikan yang di-download adalah foto asli, bukan foto yang sedang ter-zoom/terpotong layarnya)
   btnDownload.addEventListener('click', () => {
     if (!sourceImg.src) {
       alert("Please upload a photo first!");
@@ -423,6 +456,70 @@
     link.download = 'AI_Eye_Color_Edited.png';
     link.href = canvas.toDataURL('image/png', 0.9);
     link.click();
+  });
+
+  // ==========================================
+  // FITUR PAN (GESER) & ZOOM MOUSE WHEEL
+  // ==========================================
+  
+  function updateTransform() {
+    canvas.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+  }
+
+  // Aksi Scroll Mouse untuk Zoom In / Out
+  canvasWrapper.addEventListener('wheel', (e) => {
+    if (canvas.style.display === 'none') return;
+    e.preventDefault();
+
+    // Tentukan arah scroll
+    const zoomDirection = e.deltaY < 0 ? 1.1 : 0.9;
+    
+    // Dapatkan posisi kursor mouse
+    const rect = canvasWrapper.getBoundingClientRect();
+    const cursorX = e.clientX - rect.left;
+    const cursorY = e.clientY - rect.top;
+
+    let newScale = scale * zoomDirection;
+    newScale = Math.max(1, Math.min(newScale, 15)); // Batas zoom 1x sampai 15x
+
+    if (newScale !== scale) {
+      // Kalkulasi agar zoom mengarah tepat ke posisi kursor mouse (Zoom to pointer)
+      const ratio = 1 - (newScale / scale);
+      pointX += (cursorX - (rect.width / 2) - pointX) * ratio;
+      pointY += (cursorY - (rect.height / 2) - pointY) * ratio;
+      
+      scale = newScale;
+      updateTransform();
+    }
+  });
+
+  // Aksi Klik Kiri untuk memulai Pan (Geser)
+  canvas.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isPanning = true;
+    startX = e.clientX - pointX;
+    startY = e.clientY - pointY;
+  });
+
+  // Aksi melepas Klik atau kursor keluar dari layar
+  window.addEventListener('mouseup', () => { isPanning = false; });
+  window.addEventListener('mouseleave', () => { isPanning = false; });
+
+  // Aksi pergerakan Mouse untuk menggeser foto
+  window.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    pointX = e.clientX - startX;
+    pointY = e.clientY - startY;
+    updateTransform();
+  });
+
+  // Aksi Double Click untuk Reset Zoom
+  canvas.addEventListener('dblclick', () => {
+    scale = 1;
+    pointX = 0;
+    pointY = 0;
+    updateTransform();
   });
 
 </script>
