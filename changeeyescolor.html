@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Auto Eye Color Changer (AI Detection)</title>
+  <title>Auto Eye Color Changer</title>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -175,6 +175,20 @@
       padding: 20px;
     }
 
+    .loading-overlay {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.85);
+      color: #10b981;
+      padding: 15px 25px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1.1rem;
+      display: none;
+      z-index: 10;
+      border: 1px solid #10b981;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+
     .btn-download {
       background: var(--accent);
       color: #fff;
@@ -197,58 +211,59 @@
   <div class="sidebar">
     <div class="header">
       <h1>👁️ AI Eye Color</h1>
-      <p>Otomatis mendeteksi mata dan mengubah warna tanpa seleksi manual.</p>
+      <p>Automatically detects eyes and applies realistic color blending.</p>
     </div>
 
-    <div id="ai-status" class="status-badge">⏳ Memuat Model AI... (Butuh Internet)</div>
+    <div id="ai-status" class="status-badge">⏳ Loading AI Model...</div>
 
     <hr style="width: 100%; border: 0.5px solid #334155; margin: 5px 0;">
 
     <div class="control-group">
-      <label>1. Upload Foto Wajah</label>
+      <label>1. Upload Face Photo</label>
       <input type="file" id="inp-file" accept="image/*" disabled>
     </div>
 
     <div class="control-group">
-      <label>2. Pilih Warna Mata</label>
+      <label>2. Select Eye Color</label>
       <input type="color" id="inp-color" value="#00aaff">
     </div>
 
     <div class="control-group">
-      <label>3. Blend Mode (Gaya Layer)</label>
+      <label>3. Blend Mode</label>
       <select id="inp-blend">
-        <option value="color">Color (Paling Natural)</option>
-        <option value="overlay">Overlay (Lebih Terang/Kontras)</option>
-        <option value="hue">Hue (Hanya ubah tone)</option>
-        <option value="soft-light">Soft Light (Halus)</option>
+        <option value="color">Color (Most Natural)</option>
+        <option value="overlay">Overlay (High Contrast)</option>
+        <option value="hue">Hue (Tone Only)</option>
+        <option value="soft-light">Soft Light (Subtle)</option>
       </select>
     </div>
 
     <div class="control-group">
-      <label>4. Intensitas Warna: <span id="val-opacity">70</span>%</label>
+      <label>4. Color Intensity: <span id="val-opacity">70</span>%</label>
       <input type="range" id="inp-opacity" min="0" max="100" value="70">
     </div>
 
-    <button class="btn-download" id="btn-download">⬇️ Download Hasil</button>
+    <button class="btn-download" id="btn-download">⬇️ Download Result</button>
   </div>
 
   <!-- Main Canvas -->
   <div class="canvas-wrapper">
-    <div id="placeholder" class="placeholder-text">Tunggu status AI jadi "Siap",<br>lalu upload foto wajah yang jelas.</div>
+    <div id="placeholder" class="placeholder-text">Wait for AI to be "Ready",<br>then upload a clear face photo.</div>
+    <div id="loading" class="loading-overlay">⏳ Detecting eyes...</div>
     <canvas id="canvas" style="display: none;"></canvas>
   </div>
 </div>
 
-<!-- Image element tersembunyi untuk membaca file asli sebelum masuk ke canvas -->
+<!-- Hidden image element to read source file -->
 <img id="source-img" style="display: none;">
 
-<!-- Menggunakan modul JS modern untuk mengimpor Google MediaPipe -->
 <script type="module">
   import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
 
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   const placeholder = document.getElementById('placeholder');
+  const loadingOverlay = document.getElementById('loading');
   const sourceImg = document.getElementById('source-img');
   
   const inpFile = document.getElementById('inp-file');
@@ -260,9 +275,9 @@
   const aiStatus = document.getElementById('ai-status');
 
   let faceLandmarker = null;
-  let currentLandmarks = []; // Menyimpan koordinat wajah yang terdeteksi
+  let currentLandmarks = []; 
 
-  // 1. INISIALISASI AI MEDIAPIPE
+  // 1. INITIALIZE AI MEDIAPIPE
   async function initializeAI() {
     try {
       const vision = await FilesetResolver.forVisionTasks(
@@ -275,30 +290,31 @@
           delegate: "GPU"
         },
         runningMode: "IMAGE",
-        numFaces: 4, // Bisa mendeteksi sampai 4 orang dalam 1 foto
+        numFaces: 4, 
         outputFaceBlendshapes: false
       });
 
-      aiStatus.textContent = "✅ AI Siap Digunakan!";
+      aiStatus.textContent = "✅ AI Ready to Use!";
       aiStatus.classList.add("status-ready");
-      inpFile.disabled = false; // Buka kunci tombol upload
-      placeholder.innerHTML = "Upload foto wajah masbro untuk mulai.<br>Mata akan otomatis diwarnai.";
+      inpFile.disabled = false; 
+      placeholder.innerHTML = "Upload a portrait photo to begin.<br>Eyes will be colored automatically.";
     } catch (error) {
-      aiStatus.textContent = "❌ Gagal memuat AI.";
+      aiStatus.textContent = "❌ Failed to load AI.";
       console.error(error);
     }
   }
 
-  // Jalankan inisialisasi AI saat halaman dimuat
   initializeAI();
 
-  // 2. HANDLE UPLOAD FOTO
+  // 2. HANDLE UPLOAD
   inpFile.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    placeholder.textContent = "Mendeteksi mata...";
     
+    // Tampilkan loading dan sembunyikan text awal
+    placeholder.style.display = 'none';
+    loadingOverlay.style.display = 'block';
+
     const reader = new FileReader();
     reader.onload = (event) => {
       sourceImg.src = event.target.result;
@@ -306,9 +322,9 @@
     reader.readAsDataURL(file);
   });
 
-  // 3. PROSES DETEKSI WAJAH SETELAH FOTO DIMUAT
+  // 3. PROCESS ON IMAGE LOAD
   sourceImg.onload = () => {
-    // Siapkan ukuran canvas maksimal FHD agar tidak lag
+    // Set up canvas size
     const MAX_SIZE = 1920;
     let scale = 1;
     if (sourceImg.width > MAX_SIZE || sourceImg.height > MAX_SIZE) {
@@ -317,21 +333,27 @@
     canvas.width = sourceImg.width * scale;
     canvas.height = sourceImg.height * scale;
 
+    // Gambar foto aslinya langsung ke canvas
+    ctx.drawImage(sourceImg, 0, 0, canvas.width, canvas.height);
     canvas.style.display = 'block';
-    placeholder.style.display = 'none';
 
-    // Deteksi koordinat menggunakan MediaPipe AI
-    const results = faceLandmarker.detect(sourceImg);
-    currentLandmarks = results.faceLandmarks;
+    // Gunakan setTimeout agar browser punya waktu untuk me-render foto asli
+    // sebelum UI terhenti sesaat (freeze) oleh proses deteksi AI
+    setTimeout(() => {
+      const results = faceLandmarker.detect(sourceImg);
+      currentLandmarks = results.faceLandmarks;
+      
+      loadingOverlay.style.display = 'none';
 
-    if (currentLandmarks.length === 0) {
-      alert("Waduh, AI nggak bisa mendeteksi wajah di foto ini masbro. Coba foto yang lebih terang dan menghadap depan.");
-    }
+      if (currentLandmarks.length === 0) {
+        alert("Oops, the AI couldn't detect a face in this photo. Try a brighter, front-facing image.");
+      }
 
-    renderEffect(); // Gambar hasil akhirnya
+      renderEffect();
+    }, 100); 
   };
 
-  // 4. TRIGGER RENDER SAAT SETTING DIUBAH
+  // 4. TRIGGER RENDER ON SETTING CHANGE
   [inpColor, inpBlend, inpOpacity].forEach(el => {
     el.addEventListener('input', () => {
       if (el === inpOpacity) valOpacity.innerText = el.value;
@@ -339,23 +361,18 @@
     });
   });
 
-  // 5. FUNGSI MENGGAMBAR MATA
+  // 5. DRAW IRIS FUNCTION
   function drawIris(landmarks, centerIdx, rightEdgeIdx, color, hexColor) {
     const w = canvas.width;
     const h = canvas.height;
 
-    // Ambil koordinat titik tengah pupil (centerIdx)
     const cx = landmarks[centerIdx].x * w;
     const cy = landmarks[centerIdx].y * h;
-    
-    // Ambil koordinat batas kanan iris (rightEdgeIdx) untuk mengukur jari-jari (radius)
     const ex = landmarks[rightEdgeIdx].x * w;
     const ey = landmarks[rightEdgeIdx].y * h;
     
-    // Hitung jarak (radius) menggunakan theorema pythagoras, ditambah sedikit margin (*1.1)
     const radius = Math.hypot(ex - cx, ey - cy) * 1.1; 
 
-    // Bikin gradient melingkar (Feather) agar pinggiran warna mata menyatu halus (tidak ngeblok)
     const gradient = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, radius);
     gradient.addColorStop(0, hexColor);
     gradient.addColorStop(0.7, hexColor);
@@ -367,11 +384,10 @@
     ctx.fill();
   }
 
-  // 6. FUNGSI RENDER UTAMA (MENGGABUNGKAN FOTO & EFEK)
+  // 6. MAIN RENDER EFFECT
   function renderEffect() {
     if (!sourceImg.src) return;
 
-    // Bersihkan canvas dan gambar foto aslinya
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1.0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -379,32 +395,28 @@
 
     if (currentLandmarks.length === 0) return;
 
-    // Ambil nilai dari setting UI
     const color = inpColor.value;
     const blendMode = inpBlend.value;
     const opacity = inpOpacity.value / 100;
 
-    // Setel Blend Mode (Teknik yang sama di GIMP/Photoshop)
     ctx.globalCompositeOperation = blendMode; 
     ctx.globalAlpha = opacity;
 
-    // Loop untuk setiap wajah yang terdeteksi di foto
     for (const face of currentLandmarks) {
-      // Index 468 = Pusat Mata Kanan, 469 = Batas Luar Mata Kanan
-      // Index 473 = Pusat Mata Kiri, 474 = Batas Luar Mata Kiri
-      drawIris(face, 468, 469, blendMode, color); // Gambar mata sisi kanan (dari sudut pandang AI)
-      drawIris(face, 473, 474, blendMode, color); // Gambar mata sisi kiri
+      // Kanan
+      drawIris(face, 468, 469, blendMode, color); 
+      // Kiri
+      drawIris(face, 473, 474, blendMode, color); 
     }
 
-    // Kembalikan setting canvas ke default
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1.0;
   }
 
-  // 7. TOMBOL DOWNLOAD
+  // 7. DOWNLOAD BUTTON
   btnDownload.addEventListener('click', () => {
     if (!sourceImg.src) {
-      alert("Upload foto wajah dulu ya masbro!");
+      alert("Please upload a photo first!");
       return;
     }
     const link = document.createElement('a');
