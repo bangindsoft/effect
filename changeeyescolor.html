@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto Eye Color Changer (AI Detection)</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1000px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .container { grid-template-columns: 1fr; }
+    }
+
+    .sidebar {
+      background: #020617;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .header h1 {
+      margin: 0 0 5px 0;
+      color: var(--accent);
+      font-size: 1.4rem;
+    }
+    .header p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #475569;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-align: center;
+      color: #cbd5e1;
+    }
+    .status-ready { background: #065f46; color: #a7f3d0; }
+
+    .control-group { display: flex; flex-direction: column; }
+    
+    .control-group label {
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+
+    input[type="file"] {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    input[type="file"]::file-selector-button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+      font-weight: bold;
+    }
+    input[type="file"]:disabled::file-selector-button {
+      background: #475569;
+      cursor: not-allowed;
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 40px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 2px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .canvas-wrapper {
+      width: 100%;
+      background: repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50% / 20px 20px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 400px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      position: relative;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 75vh;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    }
+
+    .placeholder-text {
+      position: absolute;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      pointer-events: none;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .btn-download {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s;
+      width: 100%;
+    }
+    .btn-download:hover { background: var(--accent-hover); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="header">
+      <h1>👁️ AI Eye Color</h1>
+      <p>Otomatis mendeteksi mata dan mengubah warna tanpa seleksi manual.</p>
+    </div>
+
+    <div id="ai-status" class="status-badge">⏳ Memuat Model AI... (Butuh Internet)</div>
+
+    <hr style="width: 100%; border: 0.5px solid #334155; margin: 5px 0;">
+
+    <div class="control-group">
+      <label>1. Upload Foto Wajah</label>
+      <input type="file" id="inp-file" accept="image/*" disabled>
+    </div>
+
+    <div class="control-group">
+      <label>2. Pilih Warna Mata</label>
+      <input type="color" id="inp-color" value="#00aaff">
+    </div>
+
+    <div class="control-group">
+      <label>3. Blend Mode (Gaya Layer)</label>
+      <select id="inp-blend">
+        <option value="color">Color (Paling Natural)</option>
+        <option value="overlay">Overlay (Lebih Terang/Kontras)</option>
+        <option value="hue">Hue (Hanya ubah tone)</option>
+        <option value="soft-light">Soft Light (Halus)</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>4. Intensitas Warna: <span id="val-opacity">70</span>%</label>
+      <input type="range" id="inp-opacity" min="0" max="100" value="70">
+    </div>
+
+    <button class="btn-download" id="btn-download">⬇️ Download Hasil</button>
+  </div>
+
+  <!-- Main Canvas -->
+  <div class="canvas-wrapper">
+    <div id="placeholder" class="placeholder-text">Tunggu status AI jadi "Siap",<br>lalu upload foto wajah yang jelas.</div>
+    <canvas id="canvas" style="display: none;"></canvas>
+  </div>
+</div>
+
+<!-- Image element tersembunyi untuk membaca file asli sebelum masuk ke canvas -->
+<img id="source-img" style="display: none;">
+
+<!-- Menggunakan modul JS modern untuk mengimpor Google MediaPipe -->
+<script type="module">
+  import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const placeholder = document.getElementById('placeholder');
+  const sourceImg = document.getElementById('source-img');
+  
+  const inpFile = document.getElementById('inp-file');
+  const inpColor = document.getElementById('inp-color');
+  const inpBlend = document.getElementById('inp-blend');
+  const inpOpacity = document.getElementById('inp-opacity');
+  const valOpacity = document.getElementById('val-opacity');
+  const btnDownload = document.getElementById('btn-download');
+  const aiStatus = document.getElementById('ai-status');
+
+  let faceLandmarker = null;
+  let currentLandmarks = []; // Menyimpan koordinat wajah yang terdeteksi
+
+  // 1. INISIALISASI AI MEDIAPIPE
+  async function initializeAI() {
+    try {
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+      );
+      
+      faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+          delegate: "GPU"
+        },
+        runningMode: "IMAGE",
+        numFaces: 4, // Bisa mendeteksi sampai 4 orang dalam 1 foto
+        outputFaceBlendshapes: false
+      });
+
+      aiStatus.textContent = "✅ AI Siap Digunakan!";
+      aiStatus.classList.add("status-ready");
+      inpFile.disabled = false; // Buka kunci tombol upload
+      placeholder.innerHTML = "Upload foto wajah masbro untuk mulai.<br>Mata akan otomatis diwarnai.";
+    } catch (error) {
+      aiStatus.textContent = "❌ Gagal memuat AI.";
+      console.error(error);
+    }
+  }
+
+  // Jalankan inisialisasi AI saat halaman dimuat
+  initializeAI();
+
+  // 2. HANDLE UPLOAD FOTO
+  inpFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    placeholder.textContent = "Mendeteksi mata...";
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      sourceImg.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // 3. PROSES DETEKSI WAJAH SETELAH FOTO DIMUAT
+  sourceImg.onload = () => {
+    // Siapkan ukuran canvas maksimal FHD agar tidak lag
+    const MAX_SIZE = 1920;
+    let scale = 1;
+    if (sourceImg.width > MAX_SIZE || sourceImg.height > MAX_SIZE) {
+        scale = Math.min(MAX_SIZE / sourceImg.width, MAX_SIZE / sourceImg.height);
+    }
+    canvas.width = sourceImg.width * scale;
+    canvas.height = sourceImg.height * scale;
+
+    canvas.style.display = 'block';
+    placeholder.style.display = 'none';
+
+    // Deteksi koordinat menggunakan MediaPipe AI
+    const results = faceLandmarker.detect(sourceImg);
+    currentLandmarks = results.faceLandmarks;
+
+    if (currentLandmarks.length === 0) {
+      alert("Waduh, AI nggak bisa mendeteksi wajah di foto ini masbro. Coba foto yang lebih terang dan menghadap depan.");
+    }
+
+    renderEffect(); // Gambar hasil akhirnya
+  };
+
+  // 4. TRIGGER RENDER SAAT SETTING DIUBAH
+  [inpColor, inpBlend, inpOpacity].forEach(el => {
+    el.addEventListener('input', () => {
+      if (el === inpOpacity) valOpacity.innerText = el.value;
+      renderEffect();
+    });
+  });
+
+  // 5. FUNGSI MENGGAMBAR MATA
+  function drawIris(landmarks, centerIdx, rightEdgeIdx, color, hexColor) {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Ambil koordinat titik tengah pupil (centerIdx)
+    const cx = landmarks[centerIdx].x * w;
+    const cy = landmarks[centerIdx].y * h;
+    
+    // Ambil koordinat batas kanan iris (rightEdgeIdx) untuk mengukur jari-jari (radius)
+    const ex = landmarks[rightEdgeIdx].x * w;
+    const ey = landmarks[rightEdgeIdx].y * h;
+    
+    // Hitung jarak (radius) menggunakan theorema pythagoras, ditambah sedikit margin (*1.1)
+    const radius = Math.hypot(ex - cx, ey - cy) * 1.1; 
+
+    // Bikin gradient melingkar (Feather) agar pinggiran warna mata menyatu halus (tidak ngeblok)
+    const gradient = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, radius);
+    gradient.addColorStop(0, hexColor);
+    gradient.addColorStop(0.7, hexColor);
+    gradient.addColorStop(1, "transparent"); 
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+
+  // 6. FUNGSI RENDER UTAMA (MENGGABUNGKAN FOTO & EFEK)
+  function renderEffect() {
+    if (!sourceImg.src) return;
+
+    // Bersihkan canvas dan gambar foto aslinya
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1.0;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(sourceImg, 0, 0, canvas.width, canvas.height);
+
+    if (currentLandmarks.length === 0) return;
+
+    // Ambil nilai dari setting UI
+    const color = inpColor.value;
+    const blendMode = inpBlend.value;
+    const opacity = inpOpacity.value / 100;
+
+    // Setel Blend Mode (Teknik yang sama di GIMP/Photoshop)
+    ctx.globalCompositeOperation = blendMode; 
+    ctx.globalAlpha = opacity;
+
+    // Loop untuk setiap wajah yang terdeteksi di foto
+    for (const face of currentLandmarks) {
+      // Index 468 = Pusat Mata Kanan, 469 = Batas Luar Mata Kanan
+      // Index 473 = Pusat Mata Kiri, 474 = Batas Luar Mata Kiri
+      drawIris(face, 468, 469, blendMode, color); // Gambar mata sisi kanan (dari sudut pandang AI)
+      drawIris(face, 473, 474, blendMode, color); // Gambar mata sisi kiri
+    }
+
+    // Kembalikan setting canvas ke default
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1.0;
+  }
+
+  // 7. TOMBOL DOWNLOAD
+  btnDownload.addEventListener('click', () => {
+    if (!sourceImg.src) {
+      alert("Upload foto wajah dulu ya masbro!");
+      return;
+    }
+    const link = document.createElement('a');
+    link.download = 'AI_Eye_Color_Edited.png';
+    link.href = canvas.toDataURL('image/png', 0.9);
+    link.click();
+  });
+
+</script>
+</body>
+</html>
