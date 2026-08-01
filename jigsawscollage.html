@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jigsaw Puzzle Collage Generator</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background-color: var(--bg-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 1000px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      height: fit-content;
+    }
+
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 15px;
+    }
+
+    .title-area h2 { margin: 0 0 4px 0; color: var(--accent); font-size: 1.4rem; }
+    .title-area p { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
+
+    .status-badge {
+      padding: 6px 12px; background: #065f46; border-radius: 6px;
+      font-size: 0.75rem; font-weight: bold; color: #a7f3d0;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      background: #020617;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .control-group { display: flex; flex-direction: column; gap: 6px; }
+    
+    .control-group label {
+      font-size: 0.75rem; font-weight: bold; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-muted);
+    }
+
+    input[type="file"] { font-size: 0.85rem; color: var(--text-muted); cursor: pointer; }
+    input[type="file"]::file-selector-button {
+      background: var(--accent); color: #fff; border: none; padding: 8px 12px;
+      border-radius: 4px; cursor: pointer; margin-right: 8px; font-weight: bold; font-size: 0.8rem;
+    }
+
+    select {
+      width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--bg-main); color: var(--text-main); font-size: 0.9rem; outline: none;
+    }
+
+    .btn-download {
+      background: var(--accent); color: #fff; border: none; padding: 0 15px;
+      border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem;
+      transition: background 0.2s; height: 40px; align-self: flex-end; width: 100%;
+    }
+    .btn-download:hover { background: var(--accent-hover); }
+
+    .canvas-wrapper {
+      width: 100%;
+      background: repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50% / 20px 20px;
+      border-radius: 8px; display: flex; justify-content: center; align-items: center;
+      min-height: 500px; border: 1px solid var(--border); overflow: hidden; position: relative;
+    }
+
+    canvas {
+      max-width: 100%; max-height: 70vh; box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+      cursor: grab; transition: transform 0.05s linear;
+    }
+    canvas:active { cursor: grabbing; }
+
+    .placeholder-text {
+      position: absolute; color: var(--text-muted); font-size: 1.05rem;
+      pointer-events: none; text-align: center; padding: 20px; line-height: 1.6;
+    }
+
+    .info-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(2, 6, 23, 0.7);
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="app-header">
+      <div class="title-area">
+        <h2>🧩 Jigsaw Puzzle Collage</h2>
+        <p>Combine multiple photos into a custom puzzle grid</p>
+      </div>
+      <div class="status-badge">✅ Ready to Use</div>
+    </div>
+
+    <div class="controls-grid">
+      <div class="control-group">
+        <label>1. Upload Photos (Multiple)</label>
+        <input type="file" id="inp-files" accept="image/*" multiple>
+      </div>
+
+      <div class="control-group">
+        <label>2. Puzzle Layout</label>
+        <select id="inp-layout">
+          <option value="4">4 Pieces Grid (2x2)</option>
+          <option value="6">6 Pieces Grid (3x2)</option>
+          <option value="9">9 Pieces Grid (3x3)</option>
+        </select>
+      </div>
+
+      <div class="control-group" style="justify-content: flex-end;">
+        <button class="btn-download" id="btn-download">⬇️ Download Collage</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrapper" id="canvas-wrapper">
+      <div id="placeholder" class="placeholder-text">Select multiple photos (e.g., 4, 6, or 9 images)<br>to generate your jigsaw collage automatically.</div>
+      <canvas id="canvas" style="display: none;"></canvas>
+    </div>
+
+    <div class="info-box">
+      <span>💡 Tips: Scroll to Zoom Canvas | Click & Drag to Move | Dbl-Click to Reset View</span>
+      <span>🔒 Privacy Protected: Your photos never leave your device.</span>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const canvasWrapper = document.getElementById('canvas-wrapper');
+    const ctx = canvas.getContext('2d');
+    const placeholder = document.getElementById('placeholder');
+    
+    const inpFiles = document.getElementById('inp-files');
+    const inpLayout = document.getElementById('inp-layout');
+    const btnDownload = document.getElementById('btn-download');
+
+    let loadedImages = [];
+    let scale = 1;
+    let pointX = 0;
+    let pointY = 0;
+    let startX = 0;
+    let startY = 0;
+    let isPanning = false;
+
+    inpFiles.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      loadedImages = [];
+      let processedCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            loadedImages.push(img);
+            processedCount++;
+            if (processedCount === files.length || loadedImages.length >= 9) {
+              generateCollage();
+            }
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(files[i]);
+      }
+    });
+
+    inpLayout.addEventListener('change', () => {
+      if (loadedImages.length > 0) generateCollage();
+    });
+
+    function generateCollage() {
+      if (loadedImages.length === 0) return;
+
+      placeholder.style.display = 'none';
+      canvas.style.display = 'block';
+
+      const layout = parseInt(inpLayout.value);
+      let cols = 2, rows = 2;
+      if (layout === 6) { cols = 3; rows = 2; }
+      else if (layout === 9) { cols = 3; rows = 3; }
+      else { cols = 2; rows = 2; }
+
+      const cellWidth = 500;
+      const cellHeight = 500;
+      const gap = 12;
+
+      canvas.width = (cols * cellWidth) + ((cols + 1) * gap);
+      canvas.height = (rows * cellHeight) + ((rows + 1) * gap);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const index = (r * cols + c) % loadedImages.length;
+          const img = loadedImages[index];
+
+          const x = gap + c * (cellWidth + gap);
+          const y = gap + r * (cellHeight + gap);
+
+          ctx.save();
+          
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(x, y, cellWidth, cellHeight, 16);
+          } else {
+            ctx.rect(x, y, cellWidth, cellHeight);
+          }
+          ctx.clip();
+
+          const imgAspect = img.width / img.height;
+          const cellAspect = cellWidth / cellHeight;
+          let sWidth = img.width, sHeight = img.height;
+          let sx = 0, sy = 0;
+
+          if (imgAspect > cellAspect) {
+            sWidth = img.height * cellAspect;
+            sx = (img.width - sWidth) / 2;
+          } else {
+            sHeight = img.width / cellAspect;
+            sy = (img.height - sHeight) / 2;
+          }
+
+          ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, cellWidth, cellHeight);
+          
+          ctx.lineWidth = 8;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
+
+      scale = 1;
+      pointX = 0;
+      pointY = 0;
+      updateTransform();
+    }
+
+    function updateTransform() {
+      canvas.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+    }
+
+    canvasWrapper.addEventListener('wheel', (e) => {
+      if (canvas.style.display === 'none') return;
+      e.preventDefault();
+      const zoomDirection = e.deltaY < 0 ? 1.1 : 0.9;
+      const rect = canvasWrapper.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+      let newScale = scale * zoomDirection;
+      newScale = Math.max(1, Math.min(newScale, 15));
+      if (newScale !== scale) {
+        const ratio = 1 - (newScale / scale);
+        pointX += (cursorX - (rect.width / 2) - pointX) * ratio;
+        pointY += (cursorY - (rect.height / 2) - pointY) * ratio;
+        scale = newScale;
+        updateTransform();
+      }
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      isPanning = true;
+      startX = e.clientX - pointX;
+      startY = e.clientY - pointY;
+    });
+
+    window.addEventListener('mouseup', () => { isPanning = false; });
+    window.addEventListener('mouseleave', () => { isPanning = false; });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      e.preventDefault();
+      pointX = e.clientX - startX;
+      pointY = e.clientY - startY;
+      updateTransform();
+    });
+
+    canvas.addEventListener('dblclick', () => {
+      scale = 1;
+      pointX = 0;
+      pointY = 0;
+      updateTransform();
+    });
+
+    btnDownload.addEventListener('click', () => {
+      if (loadedImages.length === 0) {
+        alert("Please upload photos first!");
+        return;
+      }
+      const link = document.createElement('a');
+      link.download = 'Jigsaw_Puzzle_Collage.png';
+      link.href = canvas.toDataURL('image/png', 0.9);
+      link.click();
+    });
+  </script>
+</body>
+</html>
