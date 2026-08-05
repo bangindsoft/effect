@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Tilt-Shift Effect Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="max-w-3xl w-full bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-6 md:p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold tracking-tight text-white mb-2">Tilt-Shift Effect Generator</h1>
+            <p class="text-slate-400 text-sm">Transform your landscape photos into miniature dioramas instantly. 100% client-side processing in your browser.</p>
+        </div>
+
+        <!-- Upload Section -->
+        <div id="upload-container" class="border-2 border-dashed border-slate-600 hover:border-indigo-500 rounded-xl p-8 text-center cursor-pointer transition bg-slate-900/50">
+            <input type="file" id="upload-input" accept="image/*" class="hidden">
+            <label for="upload-input" class="cursor-pointer flex flex-col items-center">
+                <svg class="w-12 h-12 text-indigo-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                <span class="text-sm font-medium text-slate-200">Click to upload or drag & drop your photo</span>
+                <span class="text-xs text-slate-500 mt-1">Supports PNG, JPG, WEBP (Processed securely on your device)</span>
+            </label>
+        </div>
+
+        <!-- Editor Section -->
+        <div id="editor-container" class="hidden space-y-6">
+            <div class="relative overflow-hidden rounded-xl bg-black border border-slate-700 flex justify-center items-center shadow-inner">
+                <canvas id="canvas" class="max-w-full h-auto cursor-crosshair touch-none block"></canvas>
+                <div class="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-slate-200 text-xs px-3 py-1.5 rounded-full pointer-events-none border border-slate-600 flex items-center gap-1.5 shadow">
+                    <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                    Drag or click on the image to position the focus area
+                </div>
+            </div>
+
+            <!-- Controls Panel -->
+            <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700 space-y-4 shadow-sm">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Blur Intensity (<span id="blur-val" class="text-indigo-400">12</span>px)</label>
+                        <input type="range" id="blur-range" min="1" max="30" value="12" class="w-full accent-indigo-500 cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Focus Spread (<span id="spread-val" class="text-indigo-400">20</span>%)</label>
+                        <input type="range" id="spread-range" min="5" max="50" value="20" class="w-full accent-indigo-500 cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Saturation (<span id="sat-val" class="text-indigo-400">135</span>%)</label>
+                        <input type="range" id="sat-range" min="100" max="200" value="135" class="w-full accent-indigo-500 cursor-pointer">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-1">
+                <button id="download-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Download Miniature Photo
+                </button>
+                <button id="reset-btn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-3 px-6 rounded-xl transition border border-slate-600">
+                    Upload Another Photo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const uploadInput = document.getElementById('upload-input');
+            const uploadContainer = document.getElementById('upload-container');
+            const editorContainer = document.getElementById('editor-container');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const blurRange = document.getElementById('blur-range');
+            const blurVal = document.getElementById('blur-val');
+            const spreadRange = document.getElementById('spread-range');
+            const spreadVal = document.getElementById('spread-val');
+            const satRange = document.getElementById('sat-range');
+            const satVal = document.getElementById('sat-val');
+            
+            const downloadBtn = document.getElementById('download-btn');
+            const resetBtn = document.getElementById('reset-btn');
+
+            let originalImage = null;
+            let imgWidth = 0;
+            let imgHeight = 0;
+            let focusY = 0.5;
+            let isDragging = false;
+
+            uploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) loadImage(file);
+            });
+
+            uploadContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadContainer.classList.add('border-indigo-500', 'bg-slate-900');
+            });
+
+            uploadContainer.addEventListener('dragleave', () => {
+                uploadContainer.classList.remove('border-indigo-500', 'bg-slate-900');
+            });
+
+            uploadContainer.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadContainer.classList.remove('border-indigo-500', 'bg-slate-900');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) loadImage(file);
+            });
+
+            function loadImage(file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        originalImage = img;
+                        const maxDim = 1200;
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > maxDim || h > maxDim) {
+                            if (w > h) {
+                                h = Math.round((h * maxDim) / w);
+                                w = maxDim;
+                            } else {
+                                w = Math.round((w * maxDim) / h);
+                                h = maxDim;
+                            }
+                        }
+                        imgWidth = w;
+                        imgHeight = h;
+                        canvas.width = w;
+                        canvas.height = h;
+
+                        uploadContainer.classList.add('hidden');
+                        editorContainer.classList.remove('hidden');
+                        focusY = 0.5;
+                        renderTiltShift();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function getOffsetY(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const scale = canvas.height / rect.height;
+                return (clientY - rect.top) * scale;
+            }
+
+            canvas.addEventListener('mousedown', (e) => { isDragging = true; updateFocus(e); });
+            canvas.addEventListener('mousemove', (e) => { if (isDragging) updateFocus(e); });
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            canvas.addEventListener('touchstart', (e) => { isDragging = true; updateFocus(e); });
+            canvas.addEventListener('touchmove', (e) => { if (isDragging) updateFocus(e); });
+            window.addEventListener('touchend', () => { isDragging = false; });
+
+            function updateFocus(e) {
+                if (!originalImage) return;
+                const y = getOffsetY(e);
+                focusY = Math.max(0, Math.min(1, y / canvas.height));
+                renderTiltShift();
+            }
+
+            function renderTiltShift() {
+                if (!originalImage) return;
+
+                const blurAmount = parseInt(blurRange.value);
+                const spreadPercent = parseInt(spreadRange.value) / 100;
+                const saturation = parseInt(satRange.value);
+
+                blurVal.textContent = blurAmount;
+                spreadVal.textContent = Math.round(spreadPercent * 100);
+                satVal.textContent = saturation;
+
+                ctx.clearRect(0, 0, imgWidth, imgHeight);
+
+                // Base sharp layer
+                ctx.save();
+                ctx.filter = `saturate(${saturation}%)`;
+                ctx.drawImage(originalImage, 0, 0, imgWidth, imgHeight);
+                ctx.restore();
+
+                // Blurred layer
+                const blurCanvas = document.createElement('canvas');
+                blurCanvas.width = imgWidth;
+                blurCanvas.height = imgHeight;
+                const bCtx = blurCanvas.getContext('2d');
+                bCtx.filter = `blur(${blurAmount}px) saturate(${saturation}%)`;
+                bCtx.drawImage(originalImage, 0, 0, imgWidth, imgHeight);
+
+                // Mask for depth of field gradient
+                const focusPixelY = focusY * imgHeight;
+                const spreadPixels = (spreadPercent * imgHeight) / 2;
+                const gradientTransition = imgHeight * 0.15;
+
+                const topSharpEdge = focusPixelY - spreadPixels;
+                const bottomSharpEdge = focusPixelY + spreadPixels;
+
+                const maskCanvas = document.createElement('canvas');
+                maskCanvas.width = imgWidth;
+                maskCanvas.height = imgHeight;
+                const mCtx = maskCanvas.getContext('2d');
+
+                mCtx.fillStyle = 'white';
+                mCtx.fillRect(0, 0, imgWidth, imgHeight);
+
+                const grad = mCtx.createLinearGradient(0, topSharpEdge - gradientTransition, 0, topSharpEdge);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                mCtx.fillStyle = grad;
+                mCtx.fillRect(0, topSharpEdge - gradientTransition, imgWidth, gradientTransition);
+
+                mCtx.clearRect(0, topSharpEdge, imgWidth, bottomSharpEdge - topSharpEdge);
+
+                const gradBottom = mCtx.createLinearGradient(0, bottomSharpEdge, 0, bottomSharpEdge + gradientTransition);
+                gradBottom.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                gradBottom.addColorStop(1, 'rgba(255, 255, 255, 1)');
+                mCtx.fillStyle = gradBottom;
+                mCtx.fillRect(0, bottomSharpEdge, imgWidth, gradientTransition);
+
+                bCtx.globalCompositeOperation = 'destination-in';
+                bCtx.drawImage(maskCanvas, 0, 0);
+
+                ctx.drawImage(blurCanvas, 0, 0);
+                drawGuideLines(focusPixelY, spreadPixels);
+            }
+
+            function drawGuideLines(focusPixelY, spreadPixels) {
+                const topY = focusPixelY - spreadPixels;
+                const bottomY = focusPixelY + spreadPixels;
+
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+
+                ctx.beginPath(); ctx.moveTo(0, focusPixelY); ctx.lineTo(imgWidth, focusPixelY); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, topY); ctx.lineTo(imgWidth, topY); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, bottomY); ctx.lineTo(imgWidth, bottomY); ctx.stroke();
+                ctx.restore();
+            }
+
+            [blurRange, spreadRange, satRange].forEach(el => el.addEventListener('input', renderTiltShift));
+
+            downloadBtn.addEventListener('click', () => {
+                if (!originalImage) return;
+                ctx.clearRect(0, 0, imgWidth, imgHeight);
+                const saturation = parseInt(satRange.value);
+                ctx.save();
+                ctx.filter = `saturate(${saturation}%)`;
+                ctx.drawImage(originalImage, 0, 0, imgWidth, imgHeight);
+                ctx.restore();
+
+                const blurAmount = parseInt(blurRange.value);
+                const spreadPercent = parseInt(spreadRange.value) / 100;
+                const blurCanvas = document.createElement('canvas');
+                blurCanvas.width = imgWidth;
+                blurCanvas.height = imgHeight;
+                const bCtx = blurCanvas.getContext('2d');
+                bCtx.filter = `blur(${blurAmount}px) saturate(${saturation}%)`;
+                bCtx.drawImage(originalImage, 0, 0, imgWidth, imgHeight);
+
+                const focusPixelY = focusY * imgHeight;
+                const spreadPixels = (spreadPercent * imgHeight) / 2;
+                const gradientTransition = imgHeight * 0.15;
+                const topSharpEdge = focusPixelY - spreadPixels;
+                const bottomSharpEdge = focusPixelY + spreadPixels;
+
+                const maskCanvas = document.createElement('canvas');
+                maskCanvas.width = imgWidth;
+                maskCanvas.height = imgHeight;
+                const mCtx = maskCanvas.getContext('2d');
+
+                mCtx.fillStyle = 'white';
+                mCtx.fillRect(0, 0, imgWidth, imgHeight);
+
+                const grad = mCtx.createLinearGradient(0, topSharpEdge - gradientTransition, 0, topSharpEdge);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                mCtx.fillStyle = grad;
+                mCtx.fillRect(0, topSharpEdge - gradientTransition, imgWidth, gradientTransition);
+
+                mCtx.clearRect(0, topSharpEdge, imgWidth, bottomSharpEdge - topSharpEdge);
+
+                const gradBottom = mCtx.createLinearGradient(0, bottomSharpEdge, 0, bottomSharpEdge + gradientTransition);
+                gradBottom.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                gradBottom.addColorStop(1, 'rgba(255, 255, 255, 1)');
+                mCtx.fillStyle = gradBottom;
+                mCtx.fillRect(0, bottomSharpEdge, imgWidth, gradientTransition);
+
+                bCtx.globalCompositeOperation = 'destination-in';
+                bCtx.drawImage(maskCanvas, 0, 0);
+
+                ctx.drawImage(blurCanvas, 0, 0);
+
+                const link = document.createElement('a');
+                link.download = 'tilt-shift-miniature.jpg';
+                link.href = canvas.toDataURL('image/jpeg', 0.92);
+                link.click();
+
+                renderTiltShift();
+            });
+
+            resetBtn.addEventListener('click', () => {
+                uploadInput.value = '';
+                editorContainer.classList.add('hidden');
+                uploadContainer.classList.remove('hidden');
+                originalImage = null;
+            });
+        })();
+    </script>
+</body>
+</html>
